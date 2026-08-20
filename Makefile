@@ -1,4 +1,4 @@
-.PHONY: install lint test ingest-25m ingest-small ingest-hm clean
+.PHONY: install lint test train embeddings ingest-25m ingest-small ingest-hm clean
 
 install:
 	uv sync --all-extras
@@ -8,6 +8,12 @@ lint:
 
 test:
 	uv run pytest
+
+train:
+	uv run python training/train_two_tower.py
+
+embeddings:
+	uv run python -m training.embeddings
 
 ingest-small:
 	uv run python -m data.scripts.ingest --dataset movielens --version ml-latest-small --max-rows 100000

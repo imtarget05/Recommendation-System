@@ -19,6 +19,12 @@ _ENV_OVERRIDES = {
     "LLM_MAX_RETRIES": "llm.max_retries",
     "LLM_PROMPT_VERSION": "llm.prompt_version",
     "LLM_CACHE_TTL": "llm.cache_ttl",
+    "QDRANT_URL": "vectordb.url",
+    "QDRANT_API_KEY": "vectordb.api_key",
+    "QDRANT_COLLECTION": "vectordb.collection",
+    "EMBEDDING_MODEL": "vectordb.embedding_model",
+    "REDIS_URL": "realtime.redis_url",
+    "KAFKA_BROKER_URL": "realtime.kafka_broker_url",
 }
 
 _DATA_DIR_SUBDIRS = {
@@ -103,6 +109,22 @@ class MonitoringConfig(BaseModel):
     log_llm_latency: bool = True
 
 
+class VectorDbConfig(BaseModel):
+    """Qdrant vector search config (Phase 5, Section 11)."""
+    url: str = "http://localhost:6333"
+    api_key: str | None = None
+    collection: str = "items"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embed_dim: int = 384
+
+
+class RealTimeConfig(BaseModel):
+    """Reserved for Phase 10 real-time pipeline (Redis/Kafka)."""
+    redis_url: str | None = None
+    kafka_broker_url: str | None = None
+    kafka_events_topic: str = "recsys-events"
+
+
 class Config(BaseModel):
     data: DataDirs = DataDirs()
     interaction_weights: InteractionWeights = InteractionWeights()
@@ -111,6 +133,8 @@ class Config(BaseModel):
     connectors: Connectors = Connectors()
     llm: LLMConfig = LLMConfig()
     monitoring: MonitoringConfig = MonitoringConfig()
+    vectordb: VectorDbConfig = VectorDbConfig()
+    realtime: RealTimeConfig = RealTimeConfig()
 
 
 def _apply_env_overrides(cfg: dict) -> dict:  # noqa: ANN001

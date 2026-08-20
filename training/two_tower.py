@@ -280,6 +280,52 @@ def retrieve_top_k(
         return results
 
 
+def retrieve_top_k_with_scores(
+    model: TwoTowerModel,
+    user_indices: list[int],
+    n_items: int,
+    k: int = 20,
+    device: str = "cpu",
+    exclude_seen: pd.DataFrame | None = None,
+) -> dict[int, list[tuple[int, float]]]:
+    """Like retrieve_top_k but also returns the cosine similarity per item.
+
+    Returns {user_idx: [(item_idx, score), ...]} sorted by score descending.
+    """
+    model.eval()
+    with torch.no_grad():
+        item_indices = torch.arange(n_items, device=device)
+        item_emb = model.item_tower(item_indices)              # (n_items, dim)
+        item_emb = F.normalize(item_emb, p=2, dim=-1)
+
+        seen_masks: dict[int, np.ndarray] = {}
+        if exclude_seen is not None:
+            for uid, group in exclude_seen.groupby("user_idx"):
+                seen_masks[cast(int, uid)] = group["item_idx"].to_numpy()
+
+        results: dict[int, list[tuple[int, float]]] = {}
+        for uid in user_indices:
+            u_emb = model.user_tower(torch.tensor([uid], device=device))  # (1, dim)
+            u_emb = F.normalize(u_emb, p=2, dim=-1)
+            sims = item_emb @ u_emb.squeeze().unsqueeze(1)  # (n_items, 1)
+            sims = sims.squeeze(1)                            # (n_items,)
+
+            if uid in seen_masks:
+                mask = seen_masks[uid].copy()
+                sims[mask] = -1.0  # exclude seen items
+
+            topk = sims.topk(k)
+            results[uid] = [
+                (int(idx), float(score))
+                for idx, score in zip(
+                    topk.indices.cpu().numpy(),
+                    topk.values.cpu().numpy(),
+                    strict=False,
+                )
+            ]
+        return results
+
+
 # ═══════════════════════════════════════════════════════════════
 # Evaluation (Recall/NDCG/HitRate @K)
 # ═══════════════════════════════════════════════════════════════

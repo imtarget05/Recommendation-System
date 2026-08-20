@@ -1,0 +1,33 @@
+# Local dev stack: serving API + Qdrant vector store (Section 22)
+# Usage:  docker compose up --build
+# Then:   open http://localhost:8000  (UI)
+#         curl http://localhost:8000/health
+# Upload embeddings to Qdrant:  make embeddings   (defaults to localhost:6333)
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=items
+      - LLM_PROVIDER=stub
+    volumes:
+      - ./data/processed:/app/data/processed
+      - ./outputs:/app/outputs
+    depends_on:
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

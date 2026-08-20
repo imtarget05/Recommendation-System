@@ -56,3 +56,14 @@ monitoring:
   metrics_window: 1000
   sampling_rate: 1.0
   log_llm_latency: true
+
+# Qdrant vector search (Phase 5, Section 11). Overridable via QDRANT_URL / QDRANT_API_KEY / QDRANT_COLLECTION / EMBEDDING_MODEL
+vectordb:
+  url: http://localhost:6333
+  collection: items
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  embed_dim: 384
+
+# Reserved for Phase 10 real-time pipeline (Redis + Kafka). Inactive until REDIS_URL / KAFKA_BROKER_URL are set.
+realtime:
+  kafka_events_topic: recsys-events

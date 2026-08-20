@@ -70,6 +70,7 @@ torch.save(
         "n_users": len(user_id_map),
         "n_items": len(item_id_map),
         "emb_dim": 64,
+        "version": os.environ.get("MODEL_VERSION", "two-tower-v1"),
         "user_id_map": user_id_map,
         "item_id_map": item_id_map,
     },
