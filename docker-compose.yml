@@ -1,8 +1,9 @@
-# Local dev stack: serving API + Qdrant vector store (Section 22)
+# Local dev stack: serving API + Qdrant vector store + real-time pipeline (Section 22)
 # Usage:  docker compose up --build
 # Then:   open http://localhost:8000  (UI)
 #         curl http://localhost:8000/health
 # Upload embeddings to Qdrant:  make embeddings   (defaults to localhost:6333)
+# Real-time pipeline (Batch 3): Redis + Redpanda (Kafka) + consumer worker
 services:
   api:
     build: .
@@ -29,5 +30,29 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  redpanda:
+    image: redpandalabs/redpanda:v2.0.6
+    ports:
+      - "9092:9092"
+    environment:
+      - REDPANDA_LOG_SEVERITY=warn
+      - REDPANDA_API_VERSION=v2
+    volumes:
+      - redpanda_data:/etc/redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --ram=1g
+      - --disk=0
+    restart: unless-stopped
+
 volumes:
   qdrant_data:
+  redpanda_data:

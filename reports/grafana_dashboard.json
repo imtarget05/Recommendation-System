@@ -1,0 +1,82 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "recsys",
+    "title": "RecSys Monitoring",
+    "timezone": "browser",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "HTTP Requests Total",
+        "datasource": "Prometheus",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "recsys_http_requests_total",
+            "legendFormat": "{{method}} {{path}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "Recommendation Requests Total",
+        "datasource": "Prometheus",
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "recsys_rec_requests_total",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "User Events Total",
+        "datasource": "Prometheus",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "recsys_events_total{event_type=\"click\"}",
+            "legendFormat": "click",
+            "refId": "A"
+          },
+          {
+            "expr": "recsys_events_total{event_type=\"view\"}",
+            "legendFormat": "view",
+            "refId": "A"
+          },
+          {
+            "expr": "recsys_events_total{event_type=\"like\"}",
+            "legendFormat": "like",
+            "refId": "A"
+          },
+          {
+            "expr": "recsys_events_total{event_type=\"purchase\"}",
+            "legendFormat": "purchase",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Latency Over Time",
+        "datasource": "Prometheus",
+        "gridPos": { "x": 0, "y": 4, "w": 18, "h": 8 },
+        "targets": [
+          {
+            "expr": "recsys_http_request_duration_seconds_sum{method=\"POST\"} / recsys_http_request_duration_seconds_count{method=\"POST\"}",
+            "legendFormat": "POST latency",
+            "refId": "A"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "5s"
+  },
+  "overwrite": false,
+  "folder": ""
+}

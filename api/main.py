@@ -254,16 +254,28 @@ async def lifespan(app: FastAPI):
         _download(MODEL_URL, checkpoint_path)
 
     if checkpoint_path.exists():
-        checkpoint = torch.load(checkpoint_path, map_location=state.device, weights_only=False)
-        state.model = TwoTowerModel(
-            n_users=len(state.user_id_map),
-            n_items=state.n_items,
-            emb_dim=checkpoint.get("emb_dim", 64),
-        )
-        state.model.load_state_dict(checkpoint["model_state"])
-        state.model.to(state.device)
-        state.model.eval()
-        state.model_version = checkpoint.get("version", MODEL_VERSION)
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=state.device, weights_only=False)
+            state.model = TwoTowerModel(
+                n_users=len(state.user_id_map),
+                n_items=state.n_items,
+                emb_dim=checkpoint.get("emb_dim", 64),
+            )
+            state.model.load_state_dict(checkpoint["model_state"])
+            state.model.to(state.device)
+            state.model.eval()
+            state.model_version = checkpoint.get("version", MODEL_VERSION)
+        except Exception as e:  # noqa: BLE001
+            msg = f"[startup] Checkpoint load failed (shape mismatch? falling back to untrained): {e}"
+            print(msg)
+            state.model = TwoTowerModel(
+                n_users=len(state.user_id_map),
+                n_items=state.n_items,
+                emb_dim=64,
+            )
+            state.model.to(state.device)
+            state.model.eval()
+            state.model_version = "untrained"
     else:
         # Use an untrained model (will still serve, but metrics will be random)
         state.model = TwoTowerModel(
