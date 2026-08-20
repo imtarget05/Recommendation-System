@@ -1,0 +1,13 @@
+model_name: popularity
+model_version: v1
+dataset_version: movielens-ml-25m
+code_commit: unknown
+training_timestamp: '2026-08-19T17:15:57.426691+00:00'
+metrics:
+  n_train_interactions: 3499905
+  n_items: 18109
+hyperparameters:
+  k: 20
+  recency_weighted: false
+status: candidate
+notes: null

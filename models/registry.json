@@ -1,0 +1,281 @@
+[
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:03:32.718551+00:00",
+    "metrics": {
+      "n_train_interactions": 3500000,
+      "n_items": 17878
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-latest-small",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:04:15.937773+00:00",
+    "metrics": {
+      "n_train_interactions": 70000,
+      "n_users": 448,
+      "n_items": 6998
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 15,
+      "alpha": 40,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:05:31.094539+00:00",
+    "metrics": {
+      "n_train_interactions": 3500000,
+      "n_items": 17878
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:05:54.903454+00:00",
+    "metrics": {
+      "n_train_interactions": 3500000,
+      "n_users": 24558,
+      "n_items": 17878
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 15,
+      "alpha": 40,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:07:30.452260+00:00",
+    "metrics": {
+      "n_train_interactions": 3500000,
+      "n_items": 17878
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:08:00.093129+00:00",
+    "metrics": {
+      "n_train_interactions": 3500000,
+      "n_users": 24558,
+      "n_items": 17878
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 15,
+      "alpha": 40,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-latest-small",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:13:41.766440+00:00",
+    "metrics": {
+      "n_train_interactions": 70000,
+      "n_items": 7035
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-latest-small",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:13:43.593803+00:00",
+    "metrics": {
+      "n_train_interactions": 70000,
+      "n_users": 453,
+      "n_items": 7035
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 15,
+      "alpha": 40,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:15:10.554658+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:15:57.426691+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v1",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:16:44.576081+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_users": 121891,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 15,
+      "alpha": 40,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v2",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:18:02.525349+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_users": 121891,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 40,
+      "alpha": 20.0,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "v3",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-19T17:19:32.591778+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_users": 121891,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "factors": 64,
+      "iterations": 40,
+      "alpha": 5.0,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "popularity",
+    "model_version": "smoke",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-20T10:22:28.037890+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "k": 20,
+      "recency_weighted": false
+    },
+    "status": "candidate",
+    "notes": null
+  },
+  {
+    "model_name": "cf_als",
+    "model_version": "smoke",
+    "dataset_version": "movielens-ml-25m",
+    "code_commit": "unknown",
+    "training_timestamp": "2026-08-20T10:23:03.183054+00:00",
+    "metrics": {
+      "n_train_interactions": 3499905,
+      "n_users": 121891,
+      "n_items": 18109
+    },
+    "hyperparameters": {
+      "factors": 8,
+      "iterations": 2,
+      "alpha": 5.0,
+      "regularization": 0.1
+    },
+    "status": "candidate",
+    "notes": null
+  }
+]

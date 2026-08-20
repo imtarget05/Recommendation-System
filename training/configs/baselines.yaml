@@ -1,0 +1,15 @@
+# Baseline hyperparameters (Section 8.1 / 8.2, Section 16 evaluation)
+popularity:
+  k: 20
+  recency_weighted: false  # use exp(-lambda*age) weighting? baseline stays pure counts
+
+cf:
+  factors: 64
+  iterations: 40
+  regularization: 0.1
+  alpha: 5  # confidence = 1 + alpha * weight (best of {5,20,40} grid on hit@20)
+  k: 20
+
+eval:
+  k_values: [10, 20]
+  max_users: 2000

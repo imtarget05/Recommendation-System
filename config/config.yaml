@@ -1,0 +1,58 @@
+# Central non-secret configuration. Env vars override the key fields (see app/config.py).
+data:
+  raw_dir: ./data/raw
+  processed_dir: ./data/processed
+  features_dir: ./data/features
+  embeddings_dir: ./data/embeddings
+  manifests_dir: ./data/manifests
+  default_dataset: movielens
+  max_rows: 5000000
+  min_interactions_per_user: 2
+
+# Interaction event types and their implicit-feedback weights (Section 6.2)
+interaction_weights:
+  view: 1.0
+  click: 2.0
+  like: 3.0
+  purchase: 5.0
+
+# Recency decay: weight = exp(-lambda * age) with age in the configured unit (Section 6.3)
+recency:
+  lambda: 0.035
+  unit: days
+  max_age_days: 365.0
+
+# Time-based split ratios (per-user temporal split, Section 5.5)
+split:
+  train: 0.7
+  validation: 0.1
+  test: 0.2
+
+# Dataset adapters
+connectors:
+  movielens:
+    # valid versions: ml-latest-small, ml-25m
+    version: ml-25m
+    base_url: https://files.grouplens.org/datasets/movielens
+    like_rating_threshold: 4.0
+  hm:
+    kaggle_ref: michaelacook/h-and-m-personalized-fashion-recommendations
+
+# LLM / GenAI layer configuration (Phase 8, LLMOps 10A)
+llm:
+  provider: stub
+  model: qwen3:8b
+  base_url: http://localhost:11434
+  prompt_version: 1
+  max_retries: 1
+  cache_enabled: true
+  cache_ttl: 300.0
+  token_budget: 4096
+  fallback: stub
+
+# LLM + serving observability (10A.5, 10A.10)
+monitoring:
+  drift_threshold: 0.05
+  metrics_window: 1000
+  sampling_rate: 1.0
+  log_llm_latency: true

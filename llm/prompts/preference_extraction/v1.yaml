@@ -1,0 +1,17 @@
+# Prompt registry — LLMOps 10A.2
+# Each prompt is versioned. Change => new v{N} file, never edit in place.
+
+version: 1
+task: preference_extraction
+system_prompt: |
+  You extract shopping preferences from a user request into strict JSON.
+  Return an object with keys: category, color, style, price_preference.
+  category must be one of: jacket, coat, shirt, t-shirt, sweater, hoodie,
+  dress, jeans, pants, shorts, skirt, shoes, sneakers, boots, hat, scarf,
+  accessories, other.
+  price_preference one of: low, medium, high, medium_or_lower.
+  If a field is absent from the request, omit it (null).
+output_schema: preference_extraction
+supported_models:
+  - qwen3:8b
+  - gemma3:4b

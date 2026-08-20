@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecSys — Search & Recommend</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-alt: #273449;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius: 8px;
+      --transition: all 0.2s ease;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; transition: var(--transition); }
+    .card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(56, 189, 248, 0.1); }
+    .search-container { position: relative; }
+    #search-input { width: 100%; padding: 0.75rem 1rem; background: var(--card-alt); border: 2px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 1rem; outline: none; transition: var(--transition); }
+    #search-input:focus { border-color: var(--accent); background: #273449; }
+    #search-input::placeholder { color: var(--text-muted); }
+    #typeahead { position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: var(--card); border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); max-height: 240px; overflow-y: auto; display: none; }
+    #typeahead.show { display: block; }
+    #typeahead .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: var(--transition); }
+    #typeahead .item:hover { background: var(--accent); color: var(--bg); }
+    #typeahead .item:last-child { border-bottom: none; }
+    .item-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+    .item-row:last-child { border-bottom: none; }
+    .item-meta { flex: 1; }
+    .item-title { font-weight: 500; color: var(--text); }
+    .item-category { font-size: 0.8rem; color: var(--accent); }
+    .item-score { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--accent); color: var(--bg); font-weight: 600; margin-left: 0.5rem; }
+    .latency { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .user-section { margin-top: 1.5rem; }
+    #user-input { padding: 0.5rem 0.75rem; background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); width: 200px; }
+    .btn { background: var(--accent); color: var(--bg); border: none; padding: 0.5rem 1.25rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: var(--transition); }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .empty { color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Search & Recommend</h1>
+  <p class="subtitle">Real-time recommendation engine powered by Two-Tower retrieval</p>
+
+  <!-- Search Bar -->
+  <div class="card">
+    <div class="search-container">
+      <input type="text" id="search-input" placeholder="Search movies... e.g. 'Toy Story'" autocomplete="off">
+      <div id="typeahead"></div>
+    </div>
+    <div class="latency" id="search-latency"></div>
+
+    <div id="search-results">
+      <div class="empty">Enter a search query to get started</div>
+    </div>
+  </div>
+
+  <!-- User Recommendations -->
+  <div class="card">
+    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Get Recommendations for a User</h2>
+    <div class="user-section">
+      <input type="text" id="user-input" placeholder="User ID (e.g. ml_user_2262)" value="ml_user_2262">
+      <button class="btn" onclick="getRecommendations()" style="margin-left: 0.5rem;">Get Recs</button>
+    </div>
+    <div class="latency" id="rec-latency"></div>
+    <div id="rec-results">
+      <div class="empty">Enter a user ID and click "Get Recs"</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+
+async function searchItems(query) {
+  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+  const data = await res.json();
+  return data.items;
+}
+
+async function getRecommendations() {
+  const uid = document.getElementById('user-input').value.trim();
+  const btn = event.target;
+  if (!uid) return;
+  btn.disabled = true;
+  document.getElementById('rec-results').innerHTML = '<div class="empty">Loading...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/recommend/${encodeURIComponent(uid)}?k=20`);
+    if (!res.ok) {
+      const err = await res.json();
+      document.getElementById('rec-results').innerHTML = `<div class="empty">${err.detail || 'User not found'}</div>`;
+      return;
+    }
+    const data = await res.json();
+    document.getElementById('rec-latency').textContent = `Latency: ${data.latency_ms}ms · Model: ${data.model}`;
+    renderResults(data.items, 'rec-results');
+  } catch (e) {
+    document.getElementById('rec-results').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderResults(items, containerId) {
+  const container = document.getElementById(containerId);
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="empty">No results found</div>';
+    return;
+  }
+  container.innerHTML = items.map(i => `
+    <div class="item-row">
+      <div class="item-meta">
+        <span class="item-title">${escapeHtml(i.title || i.item_id)}</span>
+        <span class="item-category">${escapeHtml(i.category || 'Unknown')}</span>
+      </div>
+      <span class="item-score">${i.score.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+function renderTypeahead(items) {
+  const box = document.getElementById('typeahead');
+  if (!items || items.length === 0) {
+    box.classList.remove('show');
+    return;
+  }
+  box.innerHTML = items.map(i => `
+    <div class="item" onclick="selectItem(this)">
+      ${escapeHtml(i.title || i.item_id)}
+      <span class="badge">${escapeHtml(i.category || '')}</span>
+    </div>
+  `).join('');
+  box.classList.add('show');
+}
+
+function selectItem(el) {
+  const title = el.firstChild.textContent.trim();
+  const input = document.getElementById('search-input');
+  input.value = title;
+  el.parentElement.classList.remove('show');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Debounce search
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) {
+    document.getElementById('typeahead').classList.remove('show');
+    return;
+  }
+  searchTimeout = setTimeout(async () => {
+    const items = await searchItems(q);
+    document.getElementById('search-latency').textContent = '';
+    renderTypeahead(items.slice(0, 8));
+  }, 250);
+});
+
+// Click away to close typeahead
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-container')) {
+    document.getElementById('typeahead').classList.remove('show');
+  }
+});
+</script>
+</body>
+</html>

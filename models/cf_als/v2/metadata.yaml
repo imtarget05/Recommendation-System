@@ -1,0 +1,16 @@
+model_name: cf_als
+model_version: v2
+dataset_version: movielens-ml-25m
+code_commit: unknown
+training_timestamp: '2026-08-19T17:18:02.525349+00:00'
+metrics:
+  n_train_interactions: 3499905
+  n_users: 121891
+  n_items: 18109
+hyperparameters:
+  factors: 64
+  iterations: 40
+  alpha: 20.0
+  regularization: 0.1
+status: candidate
+notes: null

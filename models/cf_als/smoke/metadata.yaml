@@ -1,0 +1,16 @@
+model_name: cf_als
+model_version: smoke
+dataset_version: movielens-ml-25m
+code_commit: unknown
+training_timestamp: '2026-08-20T10:23:03.183054+00:00'
+metrics:
+  n_train_interactions: 3499905
+  n_users: 121891
+  n_items: 18109
+hyperparameters:
+  factors: 8
+  iterations: 2
+  alpha: 5.0
+  regularization: 0.1
+status: candidate
+notes: null

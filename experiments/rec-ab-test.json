@@ -1,0 +1,15 @@
+{
+  "name": "rec-ab-test",
+  "start_time": "2026-08-20T17:16:11.880194",
+  "n_buckets": 100,
+  "variants": [
+    {
+      "name": "two-tower",
+      "weight": 0.6666666666666666
+    },
+    {
+      "name": "popularity",
+      "weight": 0.3333333333333333
+    }
+  ]
+}

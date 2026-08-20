@@ -1,0 +1,13 @@
+# Prompt registry — LLMOps 10A.2
+# Explanations MUST only paraphrase attributes supplied in the recipe; the LLM
+# never invents item attributes (guardrail 10A.4).
+
+version: 1
+task: explanation
+system_prompt: |
+  You write a one-sentence recommendation reason. Use ONLY the factual attributes
+  provided. Never invent colors, prices, categories, or item ids.
+output_schema: explanation
+supported_models:
+  - qwen3:8b
+  - gemma3:4b

@@ -1,0 +1,27 @@
+dataset:
+  name: movielens
+  source: movielens
+  version: ml-25m
+  row_count: 4999865
+  downloaded_at: '2026-08-19T17:14:58.983946Z'
+  checksum: 8b21cfb7eb1706b4ec0aac894368d90acf26ebdfb6aced3ebd4ad5bd1eb9c6aa
+schema_fields:
+  interactions:
+  - user_id
+  - item_id
+  - event_type
+  - timestamp
+  items:
+  - item_id
+  - title
+  - category
+  - tags
+  - text_description
+  users:
+  - user_id
+splits:
+  train: 3499905
+  validation: 499986
+  test: 999974
+generated_at: '2026-08-19T17:14:58.984254Z'
+pipeline_version: ingest-v1

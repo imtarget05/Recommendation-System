@@ -1,0 +1,19 @@
+# Prompt registry — LLMOps 10A.2 (v2: adds explicit user_template + few-shot examples)
+# Rule 10A.2: change prompt => new v{N} file, never edit a prior version in place.
+version: 2
+task: explanation
+system_prompt: |
+  You write a one-sentence recommendation reason. Use ONLY the factual attributes
+  provided. Never invent colors, prices, categories, or item ids (guardrail 10A.4).
+user_template: |
+  Item id: {item_id}
+  True attributes: {attributes}
+  Write exactly one short recommendation sentence using ONLY these attributes.
+few_shot_examples:
+  - item_id: "10001"
+    attributes: ["black", "jacket", "waterproof"]
+    output: "This black waterproof jacket pairs well with your winter layers."
+output_schema: explanation
+supported_models:
+  - qwen3:8b
+  - gemma3:4b

@@ -1,0 +1,92 @@
+{
+  "experiments": [
+    {
+      "model": "popularity",
+      "version": "v1",
+      "dataset": "movielens-ml-25m",
+      "metrics": {
+        "recall@10": 0.011114279053791079,
+        "recall@20": 0.020576112187845896,
+        "ndcg@10": 0.019026042018820306,
+        "ndcg@20": 0.022419278731606568,
+        "hit@10": 0.145,
+        "hit@20": 0.2375,
+        "coverage": 0.0011044232149759789,
+        "diversity": 0.2999999999999999,
+        "n_eval_users": 2000.0
+      },
+      "timestamp": "2026-08-19T17:16:11.556616+00:00",
+      "notes": "pure weighted-count popularity baseline (no recency)"
+    },
+    {
+      "model": "cf_als",
+      "version": "v1",
+      "dataset": "movielens-ml-25m",
+      "metrics": {
+        "recall@10": 0.009307497806822445,
+        "recall@20": 0.01697781844798908,
+        "ndcg@10": 0.01508088772391558,
+        "ndcg@20": 0.017492334512309853,
+        "hit@10": 0.1265,
+        "hit@20": 0.2035,
+        "coverage": 0.09674747363189574,
+        "diversity": 0.291625,
+        "n_eval_users": 2000.0
+      },
+      "timestamp": "2026-08-19T17:16:57.428060+00:00",
+      "notes": "implicit ALS, confidence=1+40*r, factors=64"
+    },
+    {
+      "model": "cf_als",
+      "version": "v2",
+      "dataset": "movielens-ml-25m",
+      "metrics": {
+        "recall@10": 0.008176501393795704,
+        "recall@20": 0.016977897134801592,
+        "ndcg@10": 0.014713856158256558,
+        "ndcg@20": 0.017404940434694424,
+        "hit@10": 0.1285,
+        "hit@20": 0.2155,
+        "coverage": 0.0833839527306864,
+        "diversity": 0.28614999999999996,
+        "n_eval_users": 2000.0
+      },
+      "timestamp": "2026-08-19T17:18:16.135772+00:00",
+      "notes": "implicit ALS, confidence=1+20.0*r, factors=64"
+    },
+    {
+      "model": "cf_als",
+      "version": "v3",
+      "dataset": "movielens-ml-25m",
+      "metrics": {
+        "recall@10": 0.009233918598098677,
+        "recall@20": 0.018492122028587462,
+        "ndcg@10": 0.01614735944814601,
+        "ndcg@20": 0.019306439511895642,
+        "hit@10": 0.1285,
+        "hit@20": 0.2255,
+        "coverage": 0.0573747860180021,
+        "diversity": 0.29067499999999996,
+        "n_eval_users": 2000.0
+      },
+      "timestamp": "2026-08-19T17:19:46.795673+00:00",
+      "notes": "implicit ALS, confidence=1+5.0*r, factors=64"
+    },
+    {
+      "model": "popularity",
+      "version": "smoke",
+      "dataset": "movielens-ml-25m",
+      "metrics": {},
+      "timestamp": "2026-08-20T10:22:28.050015+00:00",
+      "notes": null
+    },
+    {
+      "model": "cf_als",
+      "version": "smoke",
+      "dataset": "movielens-ml-25m",
+      "metrics": {},
+      "timestamp": "2026-08-20T10:23:03.321533+00:00",
+      "notes": null
+    }
+  ]
+}

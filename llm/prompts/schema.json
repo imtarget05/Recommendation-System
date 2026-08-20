@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://realtime-recsys/llm/prompts/schema.json",
+  "title": "PreferenceExtraction",
+  "description": "Common JSON output schema referenced by all versioned prompts (LLMOps 10A.2 / 10A.3). The validator in llm.service._parse_preference_json enforces this shape via the pydantic PreferenceExtraction model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [],
+  "properties": {
+    "category": {
+      "type": ["string", "null"],
+      "enum": ["jacket", "coat", "shirt", "t-shirt", "sweater", "hoodie", "dress", "jeans", "pants", "shorts", "skirt", "shoes", "sneakers", "boots", "hat", "scarf", "accessories", "other"]
+    },
+    "color": { "type": ["string", "null"] },
+    "style": { "type": ["string", "null"] },
+    "price_preference": {
+      "type": ["string", "null"],
+      "enum": ["low", "medium", "high", "medium_or_lower"]
+    }
+  }
+}

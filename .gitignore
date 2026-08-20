@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Env / secrets
+.env
+*.env
+!.env.example
+
+# Data / artifacts (never commit raw downloads or heavy artifacts)
+data/raw/
+data/processed/
+data/features/
+data/embeddings/
+data/manifests/*.runtime.yaml
+
+# ML
+*.pt
+*.pkl
+*.joblib
+*.onnx
+checkpoints/
+mlruns/
+outputs/
+tracking/
+models/**/*.parquet
+models/**/*.npz
+
+# Docker / infra
+*.log
