@@ -45,8 +45,8 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "outputs/two_tower.pt")
 MODEL_URL = os.environ.get("MODEL_URL", "")
 DATA_BASE_URL = os.environ.get("DATA_BASE_URL", "")
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "two-tower-v1")
-QDRANT_URL = os.environ.get("QDRANT_URL", "")
-QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
+QDRANT_URL = os.environ.get("QDRANT_URL", "https://e891f845-c76f-4e54-bf4f-5bc649e459b5.us-west-1-0.aws.cloud.qdrant.io")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "batch1")  # JWT sub claim 'project' = batch1
 QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "items")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
