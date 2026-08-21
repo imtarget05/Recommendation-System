@@ -1,10 +1,10 @@
 dataset:
   name: movielens
   source: movielens
-  version: ml-25m
-  row_count: 4999865
-  downloaded_at: '2026-08-19T17:14:58.983946Z'
-  checksum: 8b21cfb7eb1706b4ec0aac894368d90acf26ebdfb6aced3ebd4ad5bd1eb9c6aa
+  version: ml-latest-small
+  row_count: 100000
+  downloaded_at: '2026-08-21T12:26:52.864499Z'
+  checksum: 696d65a3dfceac7c45750ad32df2c259311949efec81f0f144fdfb91ebc9e436
 schema_fields:
   interactions:
   - user_id
@@ -20,8 +20,8 @@ schema_fields:
   users:
   - user_id
 splits:
-  train: 3499905
-  validation: 499986
-  test: 999974
-generated_at: '2026-08-19T17:14:58.984254Z'
+  train: 70000
+  validation: 10000
+  test: 20000
+generated_at: '2026-08-21T12:26:52.864593Z'
 pipeline_version: ingest-v1

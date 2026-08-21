@@ -1,32 +1,313 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecSys — Search & Recommend</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-alt: #273449;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius: 8px;
+      --transition: all 0.2s ease;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; transition: var(--transition); }
+    .card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(56, 189, 248, 0.1); }
+    .search-container { position: relative; }
+    #search-input { width: 100%; padding: 0.75rem 1rem; background: var(--card-alt); border: 2px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 1rem; outline: none; transition: var(--transition); }
+    #search-input:focus { border-color: var(--accent); background: #273449; }
+    #search-input::placeholder { color: var(--text-muted); }
+    #typeahead { position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: var(--card); border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); max-height: 240px; overflow-y: auto; display: none; }
+    #typeahead.show { display: block; }
+    #typeahead .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: var(--transition); }
+    #typeahead .item:hover { background: var(--accent); color: var(--bg); }
+    #typeahead .item:last-child { border-bottom: none; }
+    .item-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+    .item-row:last-child { border-bottom: none; }
+    .item-meta { flex: 1; }
+    .item-title { font-weight: 500; color: var(--text); }
+    .item-category { font-size: 0.8rem; color: var(--accent); }
+    .item-score { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--accent); color: var(--bg); font-weight: 600; margin-left: 0.5rem; }
+    .latency { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .user-section { margin-top: 1.5rem; }
+    #user-input { padding: 0.5rem 0.75rem; background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); width: 200px; }
+    .btn { background: var(--accent); color: var(--bg); border: none; padding: 0.5rem 1.25rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: var(--transition); }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .empty { color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
+    .chat-input { width: 100%; padding: 0.75rem 1rem; background: var(--card-alt); border: 2px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 1rem; outline: none; transition: var(--transition); margin-bottom: 0.75rem; resize: vertical; }
+    .chat-input:focus { border-color: var(--accent); }
+    .item-row.clickable { cursor: pointer; border-radius: var(--radius); padding: 0.7rem 0.5rem; transition: var(--transition); }
+    .item-row.clickable:hover { background: var(--card-alt); border-color: var(--accent); }
+    .event-tag { font-size: 0.7rem; color: #4ade80; margin-left: 0.5rem; display: none; }
+    .event-tag.show { display: inline-block; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .stat { background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.5rem; }
+    .stat b { color: var(--accent); }
+    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Search & Recommend</h1>
+  <p class="subtitle">Real-time recommendation engine powered by Two-Tower retrieval</p>
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+  <!-- Search Bar -->
+  <div class="card">
+    <div class="search-container">
+      <input type="text" id="search-input" placeholder="Search movies... e.g. 'Toy Story'" autocomplete="off">
+      <div id="typeahead"></div>
+    </div>
+    <div class="latency" id="search-latency"></div>
+
+    <div id="search-results">
+      <div class="empty">Enter a search query to get started</div>
+    </div>
+  </div>
+
+  <!-- User Recommendations -->
+  <div class="card">
+    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Get Recommendations for a User</h2>
+    <div class="user-section">
+      <input type="text" id="user-input" placeholder="User ID (e.g. ml_user_2262)" value="ml_user_2262">
+      <button class="btn" onclick="getRecommendations()" style="margin-left: 0.5rem;">Get Recs</button>
+    </div>
+    <div class="latency" id="rec-latency"></div>
+    <div id="rec-results">
+      <div class="empty">Enter a user ID and click "Get Recs"</div>
+    </div>
+  </div>
+
+  <!-- AI Recommendation Chat (Section 35) -->
+  <div class="card">
+    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">🤖 AI Recommendation Chat</h2>
+    <textarea class="chat-input" id="chat-input" rows="2" placeholder="e.g. I like black sports items"></textarea>
+    <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
+      <input type="text" id="chat-user" placeholder="User ID" value="ml_user_2262" style="padding:0.5rem 0.75rem; background:var(--card-alt); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); width:180px;">
+      <button class="btn" onclick="sendChat()">Ask AI</button>
+    </div>
+    <div class="latency" id="chat-latency"></div>
+    <div id="chat-results"></div>
+  </div>
+
+  <!-- Monitoring panel (Section 35) -->
+  <div class="card">
+    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">📊 Monitoring</h2>
+    <button class="btn" onclick="loadMonitoring()" style="margin-bottom:1rem;">Refresh</button>
+    <div id="monitor-content"><div class="empty">Click Refresh to load system metrics</div></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+
+async function searchItems(query) {
+  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+  const data = await res.json();
+  return data.items;
+}
+
+async function sendEvent(itemId, el) {
+  const uid = document.getElementById('user-input').value.trim() || 'ml_user_2262';
+  try {
+    const res = await fetch(`${API_BASE}/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: uid, item_id: itemId, event_type: 'click' })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'event failed');
+    const tag = el.querySelector('.event-tag');
+    if (tag) {
+      tag.textContent = '✓ event sent';
+      tag.classList.add('show');
+      setTimeout(() => tag.classList.remove('show'), 1500);
+    }
+  } catch (e) {
+    console.error('event error:', e.message);
+  }
+}
+
+async function getRecommendations() {
+  const uid = document.getElementById('user-input').value.trim();
+  const btn = event.target;
+  if (!uid) return;
+  btn.disabled = true;
+  document.getElementById('rec-results').innerHTML = '<div class="empty">Loading...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/recommend/${encodeURIComponent(uid)}?k=20`);
+    if (!res.ok) {
+      const err = await res.json();
+      document.getElementById('rec-results').innerHTML = `<div class="empty">${err.detail || 'User not found'}</div>`;
+      return;
+    }
+    const data = await res.json();
+    document.getElementById('rec-latency').textContent = `Latency: ${data.latency_ms}ms · Model: ${data.model}`;
+    renderResults(data.items, 'rec-results', true);
+  } catch (e) {
+    document.getElementById('rec-results').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function sendChat() {
+  const message = document.getElementById('chat-input').value.trim();
+  const uid = document.getElementById('chat-user').value.trim();
+  const btn = event.target;
+  if (!message) return;
+  btn.disabled = true;
+  document.getElementById('chat-results').innerHTML = '<div class="empty">Thinking...</div>';
+  try {
+    const res = await fetch(`${API_BASE}/chat/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: uid, message, top_k: 10 })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'chat failed');
+    const data = await res.json();
+    document.getElementById('chat-latency').textContent =
+      `Latency: ${data.latency_ms}ms · LLM mode: ${data.llm_mode} · prompt v${data.prompt_version}`;
+    if (!data.items || data.items.length === 0) {
+      document.getElementById('chat-results').innerHTML = '<div class="empty">No items found</div>';
+      return;
+    }
+    document.getElementById('chat-results').innerHTML = `
+      <div class="item-row" style="border-bottom:1px solid var(--border); padding:0.7rem 0; color:var(--text-muted); font-size:0.9rem;">
+        I found these items for you:
+      </div>` + data.items.map(i => `
+      <div class="item-row clickable" onclick="sendEvent('${i.item_id}', this)">
+        <div class="item-meta">
+          <span class="item-title">${escapeHtml(i.title || i.item_id)}</span>
+          <span class="item-category">${escapeHtml(i.category || 'Unknown')}</span>
+          <span class="event-tag"></span>
+        </div>
+        <span class="item-score">${i.score.toFixed(2)}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('chat-results').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadMonitoring() {
+  const box = document.getElementById('monitor-content');
+  box.innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const [healthRes, metricsRes] = await Promise.all([
+      fetch(`${API_BASE}/health`),
+      fetch(`${API_BASE}/metrics`)
+    ]);
+    const health = await healthRes.json();
+    const raw = await metricsRes.text();
+    const get = (name, label) => {
+      const re = new RegExp(`^${name}\\{.*${label ? label + '=' : ''}.*\\} ([0-9.e+]+)`, 'm');
+      const m = raw.match(re);
+      return m ? m[1] : '-';
+    };
+    const events = [...raw.matchAll(/^recsys_events_total\{(.+?)\} ([\d.]+)/gm)]
+      .map(m => ({ label: m[1].match(/event_type="(\w+)"/)?.[1] || '?', count: m[2] }))
+      .filter(e => e.count !== '0');
+    box.innerHTML = `
+      <div class="grid2">
+        <div>
+          <div class="stat"><b>Status:</b> ${health.status} · <b>Model:</b> ${health.model_version}</div>
+          <div class="stat"><b>Device:</b> ${health.device} · <b>Qdrant:</b> ${health.qdrant_available ? 'online' : 'offline'}</div>
+          <div class="stat"><b>Users:</b> ${health.users} · <b>Items:</b> ${health.items}</div>
+        </div>
+        <div>
+          <div class="stat"><b>HTTP requests:</b> ${get('recsys_http_requests_total')}</div>
+          <div class="stat"><b>Rec requests:</b> ${get('recsys_rec_requests_total')}</div>
+          <div class="stat"><b>Events:</b> ${events.map(e => `${e.label}=${e.count}`).join(', ') || 'none'}</div>
+        </div>
+      </div>
+      <div class="stat mono" style="max-height:180px; overflow-y:auto; white-space:pre-wrap;">${escapeHtml(raw.split('\n').slice(0, 20).join('\n'))}</div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function renderResults(items, containerId, clickable) {
+  const container = document.getElementById(containerId);
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="empty">No results found</div>';
+    return;
+  }
+  container.innerHTML = items.map(i => `
+    <div class="item-row${clickable ? ' clickable' : ''}" ${clickable ? `onclick="sendEvent('${i.item_id}', this)"` : ''}>
+      <div class="item-meta">
+        <span class="item-title">${escapeHtml(i.title || i.item_id)}</span>
+        <span class="item-category">${escapeHtml(i.category || 'Unknown')}</span>
+        <span class="event-tag"></span>
+      </div>
+      <span class="item-score">${i.score.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+function renderTypeahead(items) {
+  const box = document.getElementById('typeahead');
+  if (!items || items.length === 0) {
+    box.classList.remove('show');
+    return;
+  }
+  box.innerHTML = items.map(i => `
+    <div class="item" onclick="selectItem(this)">
+      ${escapeHtml(i.title || i.item_id)}
+      <span class="badge">${escapeHtml(i.category || '')}</span>
+    </div>
+  `).join('');
+  box.classList.add('show');
+}
+
+function selectItem(el) {
+  const title = el.firstChild.textContent.trim();
+  const input = document.getElementById('search-input');
+  input.value = title;
+  el.parentElement.classList.remove('show');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Debounce search
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) {
+    document.getElementById('typeahead').classList.remove('show');
+    return;
+  }
+  searchTimeout = setTimeout(async () => {
+    const items = await searchItems(q);
+    document.getElementById('search-latency').textContent = '';
+    renderTypeahead(items.slice(0, 8));
+  }, 250);
+});
+
+// Click away to close typeahead
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-container')) {
+    document.getElementById('typeahead').classList.remove('show');
+  }
+});
+</script>
+</body>
 </html>

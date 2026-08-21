@@ -182,13 +182,23 @@ def _init_qdrant() -> None:
         state.qdrant_client = client
         state.qdrant_available = True
 
-        from sentence_transformers import SentenceTransformer
-
-        state.embedder = SentenceTransformer(EMBEDDING_MODEL)
-        print(f"[qdrant] connected to {QDRANT_URL} (collection={QDRANT_COLLECTION})")
+        print(
+            f"[qdrant] connected to {QDRANT_URL} (collection={QDRANT_COLLECTION}); "
+            "sentence embedder initialized lazily on first /search"
+        )
     except Exception as e:  # noqa: BLE001
         state.qdrant_available = False
         print(f"[qdrant] unavailable ({e}); falling back to keyword search")
+
+
+def _get_embedder():
+    """Load the SentenceTransformer model lazily (kept off the startup path to
+    keep the Render free-tier memory footprint under the 512 MB limit)."""
+    if state.embedder is None:
+        from sentence_transformers import SentenceTransformer
+
+        state.embedder = SentenceTransformer(EMBEDDING_MODEL)
+    return state.embedder
 
 
 def _download(url: str, dest: Path) -> None:
@@ -266,7 +276,10 @@ async def lifespan(app: FastAPI):
             state.model.eval()
             state.model_version = checkpoint.get("version", MODEL_VERSION)
         except Exception as e:  # noqa: BLE001
-            msg = f"[startup] Checkpoint load failed (shape mismatch? falling back to untrained): {e}"
+            msg = (
+                f"[startup] Checkpoint load failed "
+                f"(shape mismatch? falling back to untrained): {e}"
+            )
             print(msg)
             state.model = TwoTowerModel(
                 n_users=len(state.user_id_map),
@@ -477,11 +490,12 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
 
     items: list[RecItem] = []
     source = "keyword"
-    if state.qdrant_available and state.embedder is not None and state.qdrant_client is not None:
+    if state.qdrant_available and state.qdrant_client is not None:
         try:
             from training.embeddings import query_qdrant
 
-            vector = state.embedder.encode([q], convert_to_numpy=True)[0]
+            embedder = _get_embedder()
+            vector = embedder.encode([q], convert_to_numpy=True)[0]
             hits = query_qdrant(
                 state.qdrant_client, state.qdrant_collection, vector, limit=20
             )

@@ -26,36 +26,37 @@ np.random.seed(42)
 print("Loading data...")
 train_df = pd.read_parquet("data/processed/interactions_train.parquet")
 test_df = pd.read_parquet("data/processed/interactions_test.parquet")
+items_df = pd.read_parquet("data/processed/items.parquet")
 
-# Sample users that appear in BOTH train and test
-test_users = test_df["user_id"].unique()
-sampled = random.sample(list(test_users), 5000)
-train_sub = train_df.loc[train_df["user_id"].isin(sampled)]
-test_sub = test_df.loc[test_df["user_id"].isin(sampled)]
-common = set(train_sub["user_id"]) & set(test_sub["user_id"])
-train_sub = train_sub.loc[train_sub["user_id"].isin(list(common))]
-test_sub = test_sub.loc[test_sub["user_id"].isin(list(common))]
-print(f"Train: {train_sub.shape}, Test: {test_sub.shape}, users: {len(common)}")
+# Build id maps EXACTLY like api/main.py reconstructs them at serving time
+# (items from items.parquet in file order, users from the train split). This
+# guarantees the saved embedding-table shapes match what the serving container
+# rebuilds, so the checkpoint loads cleanly instead of falling back to
+# "untrained".
+item_id_map = {iid: i for i, iid in enumerate(items_df["item_id"].tolist())}
+user_id_map = {uid: i for i, uid in enumerate(sorted(train_df["user_id"].unique()))}
+n_items = len(item_id_map)
+n_users = len(user_id_map)
+print(f"Train: {train_df.shape}, users={n_users}, items={n_items}")
 
-items = sorted(set(train_sub["item_id"]) | set(test_sub["item_id"]))
-users = sorted(common)
-item_id_map = {iid: i for i, iid in enumerate(items)}
-user_id_map = {uid: i for i, uid in enumerate(users)}
-
-print(f"Building dataset ({len(users)} users, {len(items)} items)...")
-dataset = TwoTowerDataset(train_sub, user_id_map, item_id_map, neg_samples=4)
+print(f"Building dataset ({n_users} users, {n_items} items)...")
+dataset = TwoTowerDataset(train_df, user_id_map, item_id_map, neg_samples=4)
 loader = DataLoader(dataset, batch_size=256, shuffle=True, collate_fn=two_tower_collate_fn)
 
-model = TwoTowerModel(n_users=len(user_id_map), n_items=len(item_id_map), emb_dim=64)
+model = TwoTowerModel(n_users=n_users, n_items=n_items, emb_dim=64)
 
 print("Training Two-Tower (3 epochs)...")
 history = train_two_tower(model, loader, epochs=3, lr=0.001, device="cpu")
 print(f"Training done. Final loss: {history['train_loss'][-1]:.4f}")
 
 print("Evaluating...")
+# Evaluate on users present in BOTH train and test (capped to keep it tractable).
+common = sorted(set(train_df["user_id"]) & set(test_df["user_id"]))
+eval_users = random.sample(common, min(2000, len(common)))
+test_sub = test_df.loc[test_df["user_id"].isin(eval_users)]
 metrics = evaluate_retrieval(
-    model, test_sub, user_id_map, item_id_map, train_sub,
-    k_values=[10, 20], max_users=200,
+    model, test_sub, user_id_map, item_id_map, train_df,
+    k_values=[10, 20], max_users=2000,
 )
 print("Metrics:", metrics)
 

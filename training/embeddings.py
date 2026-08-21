@@ -198,6 +198,14 @@ def main() -> None:
 
     Uses QDRANT_URL / QDRANT_API_KEY / QDRANT_COLLECTION / EMBEDDING_MODEL env vars by default,
     so the same command works against a local Docker Qdrant or Qdrant Cloud.
+
+    Example (after starting Qdrant):
+        uv run python -m training.embeddings --url http://localhost:6333 --collection items
+
+    If Qdrant is not running, start it first:
+        # Docker:
+        docker run -p 6333:6333 qdrant/qdrant:v1.12.4
+        # Or see: https://qdrant.io/docs/cloud/quick-start/
     """
     import argparse
     import os
