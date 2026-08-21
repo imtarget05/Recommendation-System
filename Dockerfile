@@ -13,8 +13,10 @@ COPY pyproject.toml uv.lock ./
 COPY app ./app
 COPY config ./config
 
-# Frozen lockfile install: ALL deps incl. dev extras (tests run in CI), wheels pre-built
-RUN uv sync --frozen --all-extras --python 3.12
+# Frozen lockfile install: wheels pre-built in builder; runtime stays slim.
+# (Dev extras pytest/ruff are intentionally NOT shipped into the served image to
+#  keep the build + image small enough for Render's free starter buildPlan.)
+RUN uv sync --frozen --python 3.12
 
 # ── Stage 2: runtime (slim, no build tools) ──
 FROM python:3.12-slim-trixie
@@ -32,8 +34,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 # App code (exclude data/ outputs/ via .dockerignore)
 COPY . .
 
-# Pre-download the embedding model for fast cold-start (Qdrant semantic search)
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')" || true
+# NOTE: the embedding model (sentence-transformers/all-MiniLM-L6-v2) is now loaded
+# lazily by api/main.py (_get_embedder) on first /search and cached afterward,
+# so it is NOT pre-downloaded at build time (keeps the image slim / fits free tier).
 
 EXPOSE 8000
 
