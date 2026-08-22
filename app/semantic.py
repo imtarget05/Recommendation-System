@@ -14,7 +14,6 @@ Parity with sentence-transformers is asserted by tests/unit/test_semantic_parity
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -74,9 +73,10 @@ class OnnxEncoder:
         return emb.astype(np.float32)
 
 
-@lru_cache(maxsize=1)
 def get_encoder() -> OnnxEncoder | None:
-    """Lazily build the encoder; returns None if assets are absent."""
+    """Lazily build the encoder; returns None if assets are absent.
+    Not cached: a None result must be retryable after the assets are
+    downloaded by api.main._get_embedder (which caches on state.embedder)."""
     if not (SEMANTIC_DIR / "model.onnx").exists():
         return None
     return OnnxEncoder()
