@@ -11,7 +11,6 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
 
 from training.common import load_processed
 
@@ -162,6 +161,8 @@ def run_embedding_pipeline(
         raise ValueError("No items found — run `make ingest-small` first.")
 
     # Load model
+    from sentence_transformers import SentenceTransformer  # training-only dep
+
     model = SentenceTransformer(model_name)
 
     # Encode items
