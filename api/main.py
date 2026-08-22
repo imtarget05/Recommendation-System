@@ -145,6 +145,67 @@ class ChatRecommendRequest(BaseModel):
 # State (loaded at startup)
 # ═══════════════════════════════════════════════════════════════
 
+class ArtifactIntegrityError(RuntimeError):
+    """Raised at startup when embeddings/data artifacts are inconsistent.
+
+    Fail-fast by design: serving a mismatched artifact caused production
+    IndexError (bug: user index 5889 out of bounds for size 453).
+    """
+
+
+def _validate_artifacts(model: NumpyRetriever) -> None:
+    """Fail-fast integrity checks between embeddings.npz and the serving data.
+
+    Raises ArtifactIntegrityError (never auto-corrects, never falls back) when:
+      - embedding row counts do not match id arrays
+      - id arrays do not match the parquet datasets exactly
+      - embedding dimensions are invalid or disagree
+      - ids are duplicated
+      - index mapping could go out of bounds
+    """
+    n_emb_users, n_emb_items = int(model.user_emb.shape[0]), int(model.item_emb.shape[0])
+    n_id_users, n_id_items = len(model.user_ids), len(model.item_ids)
+    n_ds_users, n_ds_items = len(state.user_id_map), state.n_items
+
+    def _fail(artifact: str, expected: object, actual: object) -> None:
+        raise ArtifactIntegrityError(
+            f"Artifact integrity check failed: artifact={artifact} "
+            f"expected={expected} actual={actual}"
+        )
+
+    if n_id_users != n_emb_users:
+        _fail("user_ids length vs user_emb rows", n_emb_users, n_id_users)
+    if n_id_items != n_emb_items:
+        _fail("item_ids length vs item_emb rows", n_emb_items, n_id_items)
+    if n_ds_users != n_emb_users:
+        _fail("dataset users vs user_emb rows", n_emb_users, n_ds_users)
+    if n_ds_items != n_emb_items:
+        _fail("dataset items vs item_emb rows", n_emb_items, n_ds_items)
+
+    if len(set(model.user_ids.tolist())) != n_id_users:
+        _fail("unique user ids in npz", n_id_users, len(set(model.user_ids.tolist())))
+    if len(set(model.item_ids.tolist())) != n_id_items:
+        _fail("unique item ids in npz", n_id_items, len(set(model.item_ids.tolist())))
+
+    emb_user_ids, emb_item_ids = set(map(str, model.user_ids)), set(map(str, model.item_ids))
+    if emb_user_ids != set(state.user_id_map):
+        missing = len(set(state.user_id_map) - emb_user_ids)
+        extra = len(emb_user_ids - set(state.user_id_map))
+        _fail("user id sets (dataset vs npz)", f"match (missing={missing})", f"extra={extra}")
+    if emb_item_ids != set(state.item_id_map):
+        missing = len(set(state.item_id_map) - emb_item_ids)
+        extra = len(emb_item_ids - set(state.item_id_map))
+        _fail("item id sets (dataset vs npz)", f"match (missing={missing})", f"extra={extra}")
+
+    d_user, d_item = int(model.user_emb.shape[1]), int(model.item_emb.shape[1])
+    if d_user <= 0 or d_item <= 0:
+        _fail("embedding dimensions positive", ">0", f"user={d_user} item={d_item}")
+    if d_user != d_item:
+        _fail("user/item embedding dims equal", d_user, d_item)
+    if not np.isfinite(model.user_emb).all() or not np.isfinite(model.item_emb).all():
+        _fail("finite embedding values", "all finite", "NaN/Inf present")
+
+
 class AppState:
     model: NumpyRetriever | None = None
     model_version: str = MODEL_VERSION
@@ -277,7 +338,11 @@ async def lifespan(app: FastAPI):
     if emb_path.exists():
         try:
             state.model = load_retriever(str(emb_path))
+            # Fail-fast on artifact/dataset mismatch (bug: IndexError 5889 vs 453).
+            _validate_artifacts(state.model)
             state.model_version = state.model.version
+        except ArtifactIntegrityError:
+            raise  # never serve a mismatched artifact
         except Exception as e:  # noqa: BLE001
             print(f"[startup] Embeddings load failed (falling back to untrained): {e}")
 
