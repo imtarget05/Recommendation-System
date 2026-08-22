@@ -25,20 +25,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd realtime-recsys
           uv sync --extra training --extra dev
 
       - name: Lint with ruff
         run: |
-          cd realtime-recsys
           uv run ruff check .
 
       - name: Type check with pyright
         run: |
-          cd realtime-recsys
           npx pyright
 
       - name: Test with pytest
         run: |
-          cd realtime-recsys
           uv run pytest
