@@ -32,6 +32,9 @@ _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _STOPWORDS = frozenset({
     "the", "a", "an", "of", "and", "in", "on", "for", "to", "with", "movie",
     "movies", "film", "phim", "about", "some", "like", "want", "give", "me",
+    # Vietnamese fillers (accent-stripped) — no movie intent.
+    "toi", "muon", "xem", "thich", "tim", "can", "mot", "nhung", "nao",
+    "vay", "cho", "voi", "cua", "hoac", "dien", "hay",
 })
 
 

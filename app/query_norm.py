@@ -17,6 +17,15 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass, field
 
+# Vietnamese function/filler words — carry no movie intent and poison the
+# English embedding ("toi muon xem horror movie" → junk). Stripped from the
+# normalized query before encoding.
+_VI_FILLERS: frozenset[str] = frozenset({
+    "toi", "muon", "xem", "thich", "tim", "can", "mot", "mot", "nhung",
+    "nao", "gi", "vay", "cho", "voi", "la", "cua", "va", "hoac", "goi_y",
+    "bo", "dien", "hay",
+})
+
 # Accent-stripped Vietnamese phrase → English replacement (longest-first applied).
 _VI_PHRASES: dict[str, str] = {
     "phim khoa hoc vien tuong": "science fiction movie",
@@ -141,11 +150,15 @@ def normalize_query(query: str) -> NormalizedQuery:
     for phrase in _PHRASE_ORDER:
         if phrase in out:
             out = out.replace(phrase, _VI_PHRASES[phrase])
-    # Word-level pass on remaining Vietnamese tokens.
-    words = [
-        _VI_WORDS.get(w, w) if w in _VI_WORDS or not w.isascii() else w
-        for w in out.split()
-    ]
+    # Word-level pass on remaining Vietnamese tokens; fillers are dropped.
+    words = []
+    for w in out.split():
+        if w in _VI_FILLERS:
+            continue
+        if w in _VI_WORDS or not w.isascii():
+            words.append(_VI_WORDS.get(w, w))
+        else:
+            words.append(w)
     normalized = " ".join(words).strip() or key
     return NormalizedQuery(
         original=query, normalized=normalized, categories=detect_categories(key)
