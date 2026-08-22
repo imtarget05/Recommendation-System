@@ -10,7 +10,19 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api.main as api_mod
-from training.two_tower import TwoTowerModel
+from app.numpy_retriever import NumpyRetriever
+
+
+def _tiny_retriever(n_users: int, n_items: int, dim: int = 8) -> NumpyRetriever:
+    import numpy as np
+
+    rng = np.random.default_rng(7)
+    return NumpyRetriever(
+        user_emb=rng.standard_normal((n_users, dim)).astype(np.float32),
+        item_emb=rng.standard_normal((n_items, dim)).astype(np.float32),
+        user_ids=np.array([f"ml_user_{i + 1}" for i in range(n_users)], dtype=np.str_),
+        item_ids=np.array([f"ml_{i + 1}" for i in range(n_items)], dtype=np.str_),
+    )
 
 
 @pytest.fixture()
@@ -35,8 +47,7 @@ def client(monkeypatch) -> TestClient:  # noqa: ANN001
     state.idx_to_item = {v: k for k, v in state.item_id_map.items()}
     state.n_items = len(items)
     state.user_id_map = {uid: i for i, uid in enumerate(sorted(train["user_id"].unique()))}
-    state.model = TwoTowerModel(n_users=len(state.user_id_map), n_items=state.n_items, emb_dim=8)
-    state.model.eval()
+    state.model = _tiny_retriever(len(state.user_id_map), state.n_items)
     state.llm = None
     monkeypatch.setattr(api_mod, "state", state)
     return TestClient(api_mod.app)

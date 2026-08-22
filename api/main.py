@@ -28,22 +28,23 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import pandas as pd
-import torch
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
+from app.numpy_retriever import NumpyRetriever, load_retriever
 from llm.service import LLMService
 from training.common import build_weighted_counts
-from training.two_tower import TwoTowerModel, retrieve_top_k_with_scores
 
 DATA_DIR = os.environ.get("DATA_DIR", "data/processed")
-MODEL_PATH = os.environ.get("MODEL_PATH", "outputs/two_tower.pt")
-MODEL_URL = os.environ.get("MODEL_URL", "")
+MODEL_PATH = os.environ.get("EMBEDDINGS_PATH", "artifacts/embeddings.npz")
+MODEL_URL = os.environ.get("EMBEDDINGS_URL", "")  # npz artifact (converted from two_tower.pt)
 DATA_BASE_URL = os.environ.get("DATA_BASE_URL", "")
+SEMANTIC_ASSETS_URL = os.environ.get("SEMANTIC_ASSETS_URL", "")  # hosts model.onnx + tokenizer.json
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "two-tower-v1")
 QDRANT_URL = os.environ.get("QDRANT_URL", "https://e891f845-c76f-4e54-bf4f-5bc649e459b5.us-west-1-0.aws.cloud.qdrant.io")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "batch1")  # JWT sub claim 'project' = batch1
@@ -145,7 +146,7 @@ class ChatRecommendRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 class AppState:
-    model: TwoTowerModel | None = None
+    model: NumpyRetriever | None = None
     model_version: str = MODEL_VERSION
     user_id_map: dict[str, int] = {}
     item_id_map: dict[str, int] = {}
@@ -192,12 +193,22 @@ def _init_qdrant() -> None:
 
 
 def _get_embedder():
-    """Load the SentenceTransformer model lazily (kept off the startup path to
-    keep the Render free-tier memory footprint under the 512 MB limit)."""
+    """Load the ONNX MiniLM encoder lazily (kept off the startup path to keep
+    the free-tier memory footprint low). Vector-compatible with the model used
+    to index the Qdrant collection (same all-MiniLM-L6-v2 weights, 384-dim)."""
     if state.embedder is None:
-        from sentence_transformers import SentenceTransformer
+        from app.semantic import get_encoder
 
-        state.embedder = SentenceTransformer(EMBEDDING_MODEL)
+        enc = get_encoder()
+        if enc is None and SEMANTIC_ASSETS_URL:
+            # Stateless cloud start: fetch tokenizer + onnx weights once.
+            SEMANTIC_DIR = os.environ.get("SEMANTIC_ASSETS_DIR", "artifacts/semantic")
+            _download(f"{SEMANTIC_ASSETS_URL}/tokenizer.json", Path(SEMANTIC_DIR) / "tokenizer.json")
+            _download(f"{SEMANTIC_ASSETS_URL}/model.onnx", Path(SEMANTIC_DIR) / "model.onnx")
+            from app.semantic import get_encoder as _ge
+
+            enc = _ge()
+        state.embedder = enc
     return state.embedder
 
 
@@ -250,7 +261,7 @@ async def lifespan(app: FastAPI):
     unique_users = sorted(state.train_df["user_id"].unique())
     state.user_id_map = {uid: i for i, uid in enumerate(unique_users)}
 
-    state.device = "cuda" if torch.cuda.is_available() else "cpu"
+    state.device = "cpu"  # NumPy serving path — no torch on the free tier
     # Eagerly raise if a configured prompt version is missing (10A.2) so startup fails fast.
     state.llm = LLMService(client=None)
     # (LLMService is intentionally None-client -> frank stub; never a SPOF, 10A.8.)
@@ -258,48 +269,32 @@ async def lifespan(app: FastAPI):
     # ── Qdrant vector search (optional, Section 11) ──
     _init_qdrant()
 
-    # ── Trained checkpoint (stateless: MODEL_URL fallback) ──
-    checkpoint_path = Path(MODEL_PATH)
-    if not checkpoint_path.exists() and MODEL_URL:
-        _download(MODEL_URL, checkpoint_path)
+    # ── NumPy embeddings (stateless: EMBEDDINGS_URL fallback) ──
+    emb_path = Path(MODEL_PATH)
+    if not emb_path.exists() and MODEL_URL:
+        _download(MODEL_URL, emb_path)
 
-    if checkpoint_path.exists():
+    if emb_path.exists():
         try:
-            checkpoint = torch.load(checkpoint_path, map_location=state.device, weights_only=False)
-            state.model = TwoTowerModel(
-                n_users=len(state.user_id_map),
-                n_items=state.n_items,
-                emb_dim=checkpoint.get("emb_dim", 64),
-            )
-            state.model.load_state_dict(checkpoint["model_state"])
-            state.model.to(state.device)
-            state.model.eval()
-            state.model_version = checkpoint.get("version", MODEL_VERSION)
+            state.model = load_retriever(str(emb_path))
+            state.model_version = state.model.version
         except Exception as e:  # noqa: BLE001
-            msg = (
-                f"[startup] Checkpoint load failed "
-                f"(shape mismatch? falling back to untrained): {e}"
-            )
-            print(msg)
-            state.model = TwoTowerModel(
-                n_users=len(state.user_id_map),
-                n_items=state.n_items,
-                emb_dim=64,
-            )
-            state.model.to(state.device)
-            state.model.eval()
-            state.model_version = "untrained"
-    else:
-        # Use an untrained model (will still serve, but metrics will be random)
-        state.model = TwoTowerModel(
-            n_users=len(state.user_id_map),
-            n_items=state.n_items,
-            emb_dim=64,
+            print(f"[startup] Embeddings load failed (falling back to untrained): {e}")
+
+    if state.model is None:
+        # Serve an untrained retriever (same behavior as the old torch fallback).
+        rng = np.random.default_rng(42)
+        emb_range = 0.5 / 64
+        n_users = max(1, len(state.user_id_map))
+        state.model = NumpyRetriever(
+            user_emb=rng.uniform(-emb_range, emb_range, size=(n_users, 64)).astype(np.float32),
+            item_emb=rng.uniform(-emb_range, emb_range, size=(state.n_items, 64)).astype(np.float32),
+            user_ids=np.array(sorted(state.user_id_map), dtype=np.str_),
+            item_ids=np.array(list(state.item_id_map), dtype=np.str_),
+            version="untrained",
         )
-        state.model.to(state.device)
-        state.model.eval()
         state.model_version = "untrained"
-        print(f"WARNING: No checkpoint at {MODEL_PATH}, serving untrained model")
+        print(f"WARNING: No embeddings at {MODEL_PATH}, serving untrained model")
 
     print(f"Startup complete in {time.time() - t0:.2f}s "
           f"(users={len(state.user_id_map)}, items={state.n_items}, device={state.device})")
@@ -365,10 +360,10 @@ async def recommend(
     if state.model is None:
         raise HTTPException(status_code=503, detail="model not loaded")
 
-    ranked = retrieve_top_k_with_scores(
-        state.model, [user_idx], state.n_items, k=k,
-        device=state.device, exclude_seen=cast(pd.DataFrame | None, exclude_seen),
-    )[user_idx][:k]
+    ranked = state.model.recommend(
+        user_idx, k=k,
+        exclude_seen_item_idx=cast(list[int] | None, exclude_seen["item_idx"].tolist() if exclude_seen is not None and len(exclude_seen) else None),
+    )[:k]
 
     items = _indices_to_items(ranked)
     return RecommendResponse(
@@ -392,9 +387,7 @@ async def recommend_batch(req: RecommendBatchRequest) -> RecommendBatchResponse:
     if state.model is None:
         raise HTTPException(status_code=503, detail="model not loaded")
 
-    ranked = retrieve_top_k_with_scores(
-        state.model, [user_idx], state.n_items, k=req.top_n, device=state.device
-    )[user_idx][: req.top_n]
+    ranked = state.model.recommend(user_idx, k=req.top_n)[: req.top_n]
 
     items = [
         RankedItem(item_id=str(state.idx_to_item.get(idx, "")), score=float(score), rank=rank)
@@ -549,10 +542,7 @@ def _run_engine(user_id: int, k: int) -> list[RecItem]:
     """Shared Two-Tower retrieval (single user) -> RecItem list. Returns [] if model is None."""
     if state.model is None:
         return []
-    ranked = retrieve_top_k_with_scores(
-        state.model, [user_id], state.n_items, k=k,
-        device=state.device, exclude_seen=None,
-    )[user_id][:k]
+    ranked = state.model.recommend(user_id, k=k)[:k]
     return _indices_to_items(list(ranked))
 
 

@@ -10,6 +10,15 @@ data/embeddings
 data/manifests/*.runtime.yaml
 outputs
 tracking
+artifacts
+training/two_tower.py
+training/train_two_tower.py
+scripts
+experiments
+monitoring
+tests
+.rel
+*.pt
 models/**/*.parquet
 models/**/*.npz
 *.log
