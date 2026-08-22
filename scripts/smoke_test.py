@@ -83,7 +83,7 @@ def check_recommend(client: httpx.Client, base: str) -> str:
     items = body.get("items") or []
     if not items:
         raise SmokeFailure("recommend returned no items")
-    bad = [i for i in items[:3] if not isinstance(i.get("score"), int | float)]
+    bad = [i for i in items[:3] if not isinstance(i.get("score"), (int, float))]
     if bad:
         raise SmokeFailure(f"recommend items have non-numeric scores: {bad}")
     return f"{len(items)} items, top score={items[0]['score']}"
