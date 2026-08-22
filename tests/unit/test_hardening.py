@@ -19,7 +19,6 @@ from fastapi.testclient import TestClient
 import api.main as api_mod
 from api.main import ArtifactIntegrityError, NumpyRetriever
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 def _make_retriever(n_users: int, n_items: int, dim: int = 8, seed: int = 0) -> NumpyRetriever:

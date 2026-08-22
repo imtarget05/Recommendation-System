@@ -10,7 +10,6 @@ Fails unless, for >=10 users x K in {1,5,10,20}:
 
 from __future__ import annotations
 
-import os
 import pathlib
 
 import numpy as np
@@ -33,13 +32,12 @@ def loaded():
     import sys
 
     sys.path.insert(0, str(ROOT))
-    from app.numpy_retriever import NumpyRetriever
-
     import torch
+
+    from app.numpy_retriever import NumpyRetriever
     from training.two_tower import retrieve_top_k_with_scores
 
     cp = torch.load(CKPT, map_location="cpu", weights_only=False)
-    model = type("M", (), {})()
     from training.two_tower import TwoTowerModel
 
     m = TwoTowerModel(n_users=cp["n_users"], n_items=cp["n_items"], emb_dim=cp["emb_dim"])
@@ -74,7 +72,6 @@ def _seen_items(loaded, user_id: str, user_idx: int) -> pd.DataFrame:
 
 def test_embedding_parity_exact(loaded):
     """NumPy weights must be byte-identical to the checkpoint tensors."""
-    import torch
 
     u_t = loaded["cp"]["model_state"]["user_embedding.weight"].numpy()
     i_t = loaded["cp"]["model_state"]["item_embedding.weight"].numpy()
@@ -105,11 +102,15 @@ def test_score_and_ranking_parity(loaded):
         for k in KS:
             t_res = torch_fn(model, [uidx], retr.n_items, k=k,
                              device="cpu", exclude_seen=excl)[uidx][:k]
-            n_res = retr.recommend(uidx, k=k,
-                                   exclude_seen_item_idx=set(seen["item_idx"]) if excl is not None else None)[:k]
+            n_res = retr.recommend(
+                uidx, k=k,
+                exclude_seen_item_idx=set(seen["item_idx"]) if excl is not None else None,
+            )[:k]
             t_ids = [int(i) for i, _ in t_res]
             n_ids = [i for i, _ in n_res]
-            assert t_ids == n_ids, f"RANKING MISMATCH user={uid_str} k={k}: {t_ids[:5]} vs {n_ids[:5]}"
+            assert t_ids == n_ids, (
+                f"RANKING MISMATCH user={uid_str} k={k}: {t_ids[:5]} vs {n_ids[:5]}"
+            )
             for (ti, ts), (_, ns) in zip(t_res, n_res):
                 max_diff = max(max_diff, abs(ts - ns))
             checked += 1
@@ -139,5 +140,7 @@ def test_exclude_seen_changes_results(loaded):
     uidx = loaded["user_id_map"]["ml_user_429"]
     seen = _seen_items(loaded, "ml_user_429", uidx)
     without = [i for i, _ in retr.recommend(uidx, k=20)]
-    with_excl = [i for i, _ in retr.recommend(uidx, k=20, exclude_seen_item_idx=set(seen["item_idx"]))]
+    with_excl = [
+        i for i, _ in retr.recommend(uidx, k=20, exclude_seen_item_idx=set(seen["item_idx"]))
+    ]
     assert not set(without[:5]) <= set(with_excl[:5]) or len(seen) == 0

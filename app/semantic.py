@@ -25,8 +25,8 @@ class OnnxEncoder:
     """Minimal ONNX MiniLM text encoder (mean pooling + L2 norm)."""
 
     def __init__(self, model_dir: Path = SEMANTIC_DIR) -> None:
-        from tokenizers import Tokenizer
         import onnxruntime as ort
+        from tokenizers import Tokenizer
 
         self.tok = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
         # The exported tokenizer.json ships with padding/truncation enabled; disable

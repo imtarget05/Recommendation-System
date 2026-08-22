@@ -170,7 +170,8 @@ elif MODE == "standalone":
             payload = json.dumps(existing)
             redis_set(user_key, payload)
             print(
-                f"[worker] processed event user={ev['user_id']} item={ev['item_id']} type={ev['event_type']}",
+                f"[worker] processed event user={ev['user_id']} item={ev['item_id']} "
+                f"type={ev['event_type']}",
                 flush=True,
             )
             # Optionally trigger a recommendation refresh here — the API will
@@ -203,7 +204,8 @@ else:  # MODE == "docker"
             payload = json.dumps(existing)
             redis_set(user_key, payload)
             print(
-                f"[worker] processed event user={ev['user_id']} item={ev['item_id']} type={ev['event_type']}",
+                f"[worker] processed event user={ev['user_id']} item={ev['item_id']} "
+                f"type={ev['event_type']}",
                 flush=True,
             )
     except KeyboardInterrupt:

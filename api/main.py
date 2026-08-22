@@ -264,7 +264,9 @@ def _get_embedder():
         if enc is None and SEMANTIC_ASSETS_URL:
             # Stateless cloud start: fetch tokenizer + onnx weights once.
             SEMANTIC_DIR = os.environ.get("SEMANTIC_ASSETS_DIR", "artifacts/semantic")
-            _download(f"{SEMANTIC_ASSETS_URL}/tokenizer.json", Path(SEMANTIC_DIR) / "tokenizer.json")
+            _download(
+            f"{SEMANTIC_ASSETS_URL}/tokenizer.json", Path(SEMANTIC_DIR) / "tokenizer.json"
+        )
             _download(f"{SEMANTIC_ASSETS_URL}/model.onnx", Path(SEMANTIC_DIR) / "model.onnx")
             from app.semantic import get_encoder as _ge
 
@@ -353,7 +355,9 @@ async def lifespan(app: FastAPI):
         n_users = max(1, len(state.user_id_map))
         state.model = NumpyRetriever(
             user_emb=rng.uniform(-emb_range, emb_range, size=(n_users, 64)).astype(np.float32),
-            item_emb=rng.uniform(-emb_range, emb_range, size=(state.n_items, 64)).astype(np.float32),
+            item_emb=rng.uniform(-emb_range, emb_range, size=(state.n_items, 64)).astype(
+                np.float32
+            ),
             user_ids=np.array(sorted(state.user_id_map), dtype=np.str_),
             item_ids=np.array(list(state.item_id_map), dtype=np.str_),
             version="untrained",
@@ -425,9 +429,13 @@ async def recommend(
     if state.model is None:
         raise HTTPException(status_code=503, detail="model not loaded")
 
+    excl = (
+        exclude_seen["item_idx"].tolist()
+        if exclude_seen is not None and len(exclude_seen)
+        else None
+    )
     ranked = state.model.recommend(
-        user_idx, k=k,
-        exclude_seen_item_idx=cast(list[int] | None, exclude_seen["item_idx"].tolist() if exclude_seen is not None and len(exclude_seen) else None),
+        user_idx, k=k, exclude_seen_item_idx=cast(list[int] | None, excl)
     )[:k]
 
     items = _indices_to_items(ranked)
