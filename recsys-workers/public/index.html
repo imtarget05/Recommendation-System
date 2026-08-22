@@ -1,313 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RecSys — Search & Recommend</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --card-alt: #273449;
-      --accent: #38bdf8;
-      --accent-hover: #0ea5e9;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --border: #334155;
-      --radius: 8px;
-      --transition: all 0.2s ease;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
-    h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
-    .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem; }
-    .container { max-width: 800px; margin: 0 auto; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; transition: var(--transition); }
-    .card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(56, 189, 248, 0.1); }
-    .search-container { position: relative; }
-    #search-input { width: 100%; padding: 0.75rem 1rem; background: var(--card-alt); border: 2px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 1rem; outline: none; transition: var(--transition); }
-    #search-input:focus { border-color: var(--accent); background: #273449; }
-    #search-input::placeholder { color: var(--text-muted); }
-    #typeahead { position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: var(--card); border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); max-height: 240px; overflow-y: auto; display: none; }
-    #typeahead.show { display: block; }
-    #typeahead .item { padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: var(--transition); }
-    #typeahead .item:hover { background: var(--accent); color: var(--bg); }
-    #typeahead .item:last-child { border-bottom: none; }
-    .item-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
-    .item-row:last-child { border-bottom: none; }
-    .item-meta { flex: 1; }
-    .item-title { font-weight: 500; color: var(--text); }
-    .item-category { font-size: 0.8rem; color: var(--accent); }
-    .item-score { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
-    .badge { display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--accent); color: var(--bg); font-weight: 600; margin-left: 0.5rem; }
-    .latency { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
-    .user-section { margin-top: 1.5rem; }
-    #user-input { padding: 0.5rem 0.75rem; background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); width: 200px; }
-    .btn { background: var(--accent); color: var(--bg); border: none; padding: 0.5rem 1.25rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: var(--transition); }
-    .btn:hover { background: var(--accent-hover); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .empty { color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
-    .chat-input { width: 100%; padding: 0.75rem 1rem; background: var(--card-alt); border: 2px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 1rem; outline: none; transition: var(--transition); margin-bottom: 0.75rem; resize: vertical; }
-    .chat-input:focus { border-color: var(--accent); }
-    .item-row.clickable { cursor: pointer; border-radius: var(--radius); padding: 0.7rem 0.5rem; transition: var(--transition); }
-    .item-row.clickable:hover { background: var(--card-alt); border-color: var(--accent); }
-    .event-tag { font-size: 0.7rem; color: #4ade80; margin-left: 0.5rem; display: none; }
-    .event-tag.show { display: inline-block; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .stat { background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.5rem; }
-    .stat b { color: var(--accent); }
-    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CinemaPicks · Discover movies you'll love</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+<style>
+:root{--bg:#0b0f1a;--card:#161d31;--card2:#1d2540;--border:rgba(148,163,184,.16);
+--accent:#7c5cff;--grad:linear-gradient(135deg,#7c5cff,#22d3ee);--text:#f1f5f9;--muted:#94a3b8;
+--ok:#34d399;--warn:#fbbf24;--err:#f87171;--radius:16px;--shadow:0 12px 40px rgba(0,0,0,.45);
+--font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5;
+background-image:radial-gradient(60% 50% at 15% 0%,rgba(124,92,255,.16),transparent 60%),
+radial-gradient(50% 40% at 90% 10%,rgba(34,211,238,.12),transparent 60%)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 1.25rem}
+header{position:sticky;top:0;z-index:50;background:rgba(11,15,26,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;gap:1rem;padding:.85rem 1.25rem;max-width:1200px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:800;font-size:1.15rem;background:none;border:none;color:var(--text);cursor:pointer;font-family:inherit}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center}
+.nav-links{display:flex;gap:.25rem;margin-left:auto;flex-wrap:wrap}
+.nav-btn{background:none;border:none;color:var(--muted);font-size:.92rem;font-weight:600;padding:.55rem .8rem;border-radius:10px;cursor:pointer;transition:.18s;font-family:inherit}
+.nav-btn:hover{color:var(--text);background:rgba(148,163,184,.12)}
+.nav-btn.active{color:#fff;background:var(--grad)}
+button:focus-visible,input:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.view{display:none;padding:2rem 0 4rem}
+.view.active{display:block}
+.vtitle{font-size:1.7rem;font-weight:800}.vsub{color:var(--muted);margin-bottom:1.5rem}
+.hero{padding:3.5rem 0 2.5rem;text-align:center}
+.hero h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:900;line-height:1.1;margin-bottom:1rem}
+.grad-t{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);max-width:560px;margin:0 auto 2rem}
+.spill{position:relative;max-width:640px;margin:0 auto}
+.spill input{width:100%;padding:1rem 1rem 1rem 3.2rem;font-size:1.05rem;color:var(--text);background:var(--card);border:2px solid var(--border);border-radius:999px;outline:none;transition:.2s}
+.spill input:focus{border-color:var(--accent)}
+.mag{position:absolute;left:1.15rem;top:50%;transform:translateY(-50%)}
+.chips{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:1.1rem}
+.chip{border:1px solid var(--border);background:var(--card);color:var(--muted);padding:.45rem .95rem;border-radius:999px;font-size:.88rem;cursor:pointer;font-family:inherit;transition:.18s}
+.chip:hover{color:var(--text);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1.1rem;margin-top:1.25rem}
+.movie{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:.18s;text-align:left;font-family:inherit;color:var(--text);padding:0;width:100%}
+.movie:hover{transform:translateY(-4px);border-color:var(--accent)}
+.poster{aspect-ratio:2/3;display:grid;place-items:center;font-size:2.6rem;background:linear-gradient(150deg,var(--card2),#232c4e);color:rgba(241,245,249,.5)}
+.meta{padding:.75rem .85rem .9rem}
+.title{font-weight:700;font-size:.93rem;line-height:1.3}
+.mrow{display:flex;justify-content:space-between;gap:.4rem;margin-top:.45rem;align-items:center}
+.genre{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score{font-size:.75rem;font-weight:800;color:#0b1020;background:var(--grad);padding:.15rem .5rem;border-radius:999px;white-space:nowrap}
+.badge{font-size:.8rem;font-weight:700;padding:.3rem .7rem;border-radius:999px}
+.bok{color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35)}
+.bwarn{color:var(--warn);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35)}
+.rhead{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem}
+.rhead h2{font-size:1.15rem}.count{color:var(--muted);font-size:.9rem}
+.skel{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:var(--radius);aspect-ratio:2/3}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.msg{padding:.9rem 1.1rem;border-radius:14px;max-width:85%;font-size:.93rem;line-height:1.55;white-space:pre-wrap}
+.msg.user{margin-left:auto;background:var(--grad);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.chat{display:flex;flex-direction:column;gap:.7rem;min-height:280px;max-height:430px;overflow-y:auto;padding:1rem;background:rgba(22,29,49,.5);border:1px solid var(--border);border-radius:var(--radius)}
+.crow{display:flex;gap:.6rem;margin-top:.9rem}
+.crow input{flex:1;padding:.75rem 1rem;background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:12px;font-size:.95rem;font-family:inherit}
+.btn{background:var(--grad);color:#fff;border:none;padding:.7rem 1.35rem;border-radius:12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.93rem;transition:.18s}
+.btn:hover{opacity:.88}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn2{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.55rem 1rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.9rem;transition:.18s}
+.btn2:hover{border-color:var(--accent)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--border);font-size:.93rem}
+.stat:last-child{border-bottom:none}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:.5rem}
+.dok{background:var(--ok);box-shadow:0 0 8px rgba(52,211,153,.8)}.derr{background:var(--err)}
+.toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%) translateY(150%);background:var(--err);color:#fff;padding:.8rem 1.3rem;border-radius:12px;font-size:.92rem;font-weight:600;z-index:99;transition:.3s;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;color:var(--muted);padding:3rem 1rem;border:1px dashed var(--border);border-radius:var(--radius);margin-top:1.25rem}
+.hint{color:var(--muted);font-size:.82rem;margin-top:.6rem;min-height:1.2em}
+.field label{display:block;color:var(--muted);font-size:.85rem;margin-bottom:.4rem;font-weight:600}
+.field input{width:100%;max-width:340px;padding:.7rem .9rem;background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:10px;font-size:.95rem;font-family:inherit}
+.field input:focus{border-color:var(--accent)}
+footer{border-top:1px solid var(--border);color:var(--muted);text-align:center;padding:1.4rem;font-size:.85rem}
+@media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:1.8rem}}
+</style>
+<!--CSS2-->
 </head>
 <body>
-<div class="container">
-  <h1>🔍 Search & Recommend</h1>
-  <p class="subtitle">Real-time recommendation engine powered by Two-Tower retrieval</p>
+<header><nav class="nav" aria-label="Main">
+<button class="brand" data-go="home"><span class="logo">🎬</span>CinemaPicks</button>
+<div class="nav-links">
+<button class="nav-btn active" data-go="home">Home</button>
+<button class="nav-btn" data-go="search">Search</button>
+<button class="nav-btn" data-go="recs">Recommendations</button>
+<button class="nav-btn" data-go="ai">AI Assistant</button>
+<button class="nav-btn" data-go="system">System</button>
+</div></nav></header>
 
-  <!-- Search Bar -->
-  <div class="card">
-    <div class="search-container">
-      <input type="text" id="search-input" placeholder="Search movies... e.g. 'Toy Story'" autocomplete="off">
-      <div id="typeahead"></div>
-    </div>
-    <div class="latency" id="search-latency"></div>
+<main class="wrap">
 
-    <div id="search-results">
-      <div class="empty">Enter a search query to get started</div>
-    </div>
-  </div>
-
-  <!-- User Recommendations -->
-  <div class="card">
-    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Get Recommendations for a User</h2>
-    <div class="user-section">
-      <input type="text" id="user-input" placeholder="User ID (e.g. ml_user_2262)" value="ml_user_2262">
-      <button class="btn" onclick="getRecommendations()" style="margin-left: 0.5rem;">Get Recs</button>
-    </div>
-    <div class="latency" id="rec-latency"></div>
-    <div id="rec-results">
-      <div class="empty">Enter a user ID and click "Get Recs"</div>
-    </div>
-  </div>
-
-  <!-- AI Recommendation Chat (Section 35) -->
-  <div class="card">
-    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">🤖 AI Recommendation Chat</h2>
-    <textarea class="chat-input" id="chat-input" rows="2" placeholder="e.g. I like black sports items"></textarea>
-    <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
-      <input type="text" id="chat-user" placeholder="User ID" value="ml_user_2262" style="padding:0.5rem 0.75rem; background:var(--card-alt); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); width:180px;">
-      <button class="btn" onclick="sendChat()">Ask AI</button>
-    </div>
-    <div class="latency" id="chat-latency"></div>
-    <div id="chat-results"></div>
-  </div>
-
-  <!-- Monitoring panel (Section 35) -->
-  <div class="card">
-    <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">📊 Monitoring</h2>
-    <button class="btn" onclick="loadMonitoring()" style="margin-bottom:1rem;">Refresh</button>
-    <div id="monitor-content"><div class="empty">Click Refresh to load system metrics</div></div>
-  </div>
+<section id="v-home" class="view active">
+<div class="hero">
+<h1>Discover movies<br><span class="grad-t">you'll love</span></h1>
+<p>Personalized recommendations powered by Two-Tower retrieval and semantic search.</p>
+<form id="heroForm" role="search" style="max-width:640px;margin:0 auto">
+<div class="spill"><span class="mag" aria-hidden="true">🔍</span>
+<input id="heroQ" type="search" placeholder='Try "Toy Story", "Star Wars", "Batman"...' aria-label="Search movies"></div>
+<div class="chips" id="heroChips"></div>
+</form>
 </div>
+<div id="heroResults"></div>
+</section>
 
+<section id="v-search" class="view">
+<h1 class="vtitle">Search</h1>
+<p class="vsub">Semantic movie search powered by MiniLM embeddings + Qdrant.</p>
+<form id="searchForm" role="search" style="display:flex;gap:.6rem;flex-wrap:wrap">
+<input id="searchQ" type="search" placeholder="Search movies, genres, keywords..." aria-label="Search query"
+style="flex:1;min-width:220px;padding:.8rem 1rem;background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit">
+<button class="btn" type="submit">Search</button>
+</form>
+<p class="hint" id="searchHint" aria-live="polite"></p>
+<div id="searchResults"></div>
+</section>
+
+<section id="v-recs" class="view">
+<h1 class="vtitle">Recommended for you</h1>
+<p class="vsub">Personalized picks from the Two-Tower retrieval model.</p>
+<div class="field"><label for="userId">User</label>
+<input id="userId" type="text" value="" placeholder="e.g. ml_user_429"></div>
+<button class="btn" id="recBtn" style="margin-top:.9rem">Refresh recommendations</button>
+<p class="hint" id="recHint" aria-live="polite"></p>
+<div id="recResults"></div>
+</section>
+
+<section id="v-ai" class="view">
+<h1 class="vtitle">AI Recommendation Assistant</h1>
+<p class="vsub">Describe what you're in the mood for.</p>
+<div class="chat" id="chatLog" aria-live="polite"></div>
+<form class="crow" id="chatForm">
+<input id="chatInput" type="text" placeholder="Ask about movies..." aria-label="Message the assistant">
+<button class="btn" type="submit">Send</button>
+</form>
+<p class="hint">Tip: include your user id (e.g. "for ml_user_429, something like Star Wars").</p>
+</section>
+
+<section id="v-system" class="view">
+<h1 class="vtitle">System Status</h1>
+<p class="vsub" id="sysSub"><span class="dot dok"></span>All systems operational</p>
+<div class="panel" id="sysPanel"></div>
+<h2 style="font-size:1.05rem;margin-top:1.5rem">Live metrics</h2>
+<div class="panel" id="metricsPanel" style="margin-top:.75rem"></div>
+</section>
+
+</main>
+<footer>CinemaPicks · Two-Tower retrieval + semantic search · demo build</footer>
+<div class="toast" id="toast" role="status"></div>
 <script>
-const API_BASE = '';
-
-async function searchItems(query) {
-  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
-  const data = await res.json();
-  return data.items;
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),4000);}
+function skeletons(n){return `<div class="grid">${'<div class="skel"></div>'.repeat(n)}</div>`;}
+function emptyState(m){return `<div class="empty">${esc(m)}</div>`;}
+function friendly(e){ // map fetch/HTTP errors to user-friendly copy
+  if(e.name==='AbortError')return 'The recommendation service is taking longer than usual. Please try again.';
+  if(e.status===404)return 'User not found. Try a different user id (e.g. ml_user_429).';
+  if(e.status===429)return 'Too many requests. Please wait a moment and try again.';
+  if(e.status>=500)return 'Recommendation service is temporarily unavailable. Please try again.';
+  return 'Something went wrong. Please try again.';}
+// fetch with cold-start awareness: slow >8s shows hint, hard timeout 90s
+async function api(path,{slowEl=null,slowMsg='Waking the recommendation service... This may take a few seconds on the first request.',timeout=90000,__method='GET',body=null}={}){
+  const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),timeout);
+  const slowT=slowEl&&setTimeout(()=>{if(slowEl)slowEl.textContent=slowMsg;},8000);
+  try{
+    const opt={signal:ctrl.signal,method:__method};
+    if(body){opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body);}
+    const r=await fetch(path,opt);
+    clearTimeout(t);if(slowT)clearTimeout(slowT);
+    if(!r.ok){const err=new Error('HTTP '+r.status);err.status=r.status;throw err;}
+    return await r.json();
+  }catch(e){clearTimeout(t);if(slowT)clearTimeout(slowT);throw e;}
 }
-
-async function sendEvent(itemId, el) {
-  const uid = document.getElementById('user-input').value.trim() || 'ml_user_2262';
-  try {
-    const res = await fetch(`${API_BASE}/event`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: uid, item_id: itemId, event_type: 'click' })
-    });
-    if (!res.ok) throw new Error((await res.json()).detail || 'event failed');
-    const tag = el.querySelector('.event-tag');
-    if (tag) {
-      tag.textContent = '✓ event sent';
-      tag.classList.add('show');
-      setTimeout(() => tag.classList.remove('show'), 1500);
+</script>
+<script>
+'use strict';
+// ── Movie card (poster = gradient placeholder with initial; no poster URLs in API) ──
+function movieCard(m,scoreLabel){
+  const t=esc(m.title||m.item_id||'Untitled');
+  const g=esc(m.category||m.genre||'');
+  const s=scoreLabel!=null?`<span class="score">${esc(scoreLabel)}</span>`:'';
+  return `<button class="movie" data-title="${t}">
+    <div class="poster" aria-hidden="true">🎬</div>
+    <div class="meta"><div class="title">${t}</div>
+    <div class="mrow"><span class="genre">${g}</span>${s}</div></div></button>`;
+}
+function renderResults(el,items,source){
+  if(!items||!items.length){el.innerHTML=emptyState('No results found. Try a different search.');return;}
+  const badge=source==='semantic'?'<span class="badge bok">✓ Semantic</span>'
+    :source==='keyword'?'<span class="badge bwarn">Keyword fallback</span>':'';
+  el.innerHTML=`<div class="rhead"><h2>Results</h2><span class="count">${items.length} found</span>${badge}</div>
+    <div class="grid">${items.map(m=>movieCard(m)).join('')}</div>`;
+}
+// ── Search (shared by hero + search page) ──
+async function doSearch(q,resultsEl,hintEl){
+  if(!q.trim()){toast('Please enter a search term.');return;}
+  resultsEl.innerHTML=skeletons(6);if(hintEl)hintEl.textContent='';
+  try{
+    const d=await api(`/api/search?q=${encodeURIComponent(q)}`,{slowEl:hintEl});
+    renderResults(resultsEl,d.items,d.source);
+  }catch(e){resultsEl.innerHTML=emptyState(friendly(e));}
+}
+// ── Recommendations ──
+async function loadRecs(){
+  const uid=$('userId').value.trim();
+  if(!uid){toast('Please enter a user id.');return;}
+  const el=$('recResults'),hint=$('recHint');
+  el.innerHTML=skeletons(6);hint.textContent='';
+  try{
+    const d=await api(`/api/recommend/${encodeURIComponent(uid)}`,{slowEl:hint});
+    const items=d.items||[];
+    if(!items.length){el.innerHTML=emptyState('No recommendations available');return;}
+    el.innerHTML=`<div class="grid">${items.map(m=>{
+      const pct=Math.round((m.score??0)*1000)/10;
+      return movieCard(m,pct>=0&&pct<=100?`${pct}% match`:null);}).join('')}</div>`;
+  }catch(e){el.innerHTML=emptyState(friendly(e));}
+}
+</script>
+<script>
+'use strict';
+// ── AI chat (uses real /api/chat/recommend — no fake responses) ──
+function addMsg(text,who){const log=$('chatLog');const d=document.createElement('div');
+  d.className='msg '+who;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+async function sendChat(text){
+  addMsg(text,'user');$('chatInput').value='';
+  const thinking=addMsg('AI is thinking...','bot');
+  const m=text.match(/ml_user_\d+/i);const uid=m?m[0]:'ml_user_429';
+  try{
+    const d=await api('/api/chat/recommend',{timeout:90000,__method:'POST',body:{user_id:uid,message:text,top_k:6}});
+    thinking.remove();
+    const recs=d.items||d.recommendations||[];
+    const reply=d.summary||d.reply||`Based on your preferences, here are ${recs.length} picks:`;
+    addMsg(reply,'bot');
+    if(recs.length){const log=$('chatLog');const w=document.createElement('div');
+      w.innerHTML=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${recs.slice(0,6).map(x=>movieCard(x)).join('')}</div>`;
+      log.appendChild(w);log.scrollTop=log.scrollHeight;}
+  }catch(e){thinking.remove();addMsg(friendly(e),'bot');}
+}
+// ── System status (real /health + /metrics) ──
+function parseMetric(text,name){const m=text.match(new RegExp('^'+name+'(?:\\{[^}]*\\})?\\s+(\\S+)','m'));return m?m[1]:null;}
+async function loadSystem(){
+  $('sysPanel').innerHTML=skeletons(1).replace('grid','panel').replace('skel','skel" style="aspect-ratio:auto;height:140px');
+  try{
+    const h=await api('/api/health',{slowEl:$('sysSub'),slowMsg:'Connecting to the recommendation service...'});
+    const ok=h.status==='ok'&&h.model_loaded&&h.qdrant_available;
+    $('sysSub').innerHTML=`<span class="dot ${ok?'dok':'derr'}"></span>${ok?'All systems operational':'Degraded'}`;
+    $('sysPanel').innerHTML=[
+      ['Recommendation API',h.status==='ok'],
+      ['Model loaded ('+esc(h.model_version||'-')+')',!!h.model_loaded],
+      ['Qdrant connected',!!h.qdrant_available],
+    ].map(([n,v])=>`<div class="stat"><span><span class="dot ${v?'dok':'derr'}"></span>${esc(n)}</span><b>${v?'Healthy':'Down'}</b></div>`).join('')
+    +`<div class="stat"><span>Users</span><b>${(h.users??0).toLocaleString()}</b></div>
+      <div class="stat"><span>Items</span><b>${(h.items??0).toLocaleString()}</b></div>`;
+    const mt=await fetch('/api/metrics').then(r=>r.text()).catch(()=>null);
+    if(mt){
+      const rows=[['Semantic searches',parseMetric(mt,'recsys_semantic_search_total')],
+        ['Keyword fallbacks',parseMetric(mt,'recsys_keyword_fallback_total')],
+        ['Qdrant requests',parseMetric(mt,'recsys_qdrant_requests_total')],
+        ['Qdrant errors',parseMetric(mt,'recsys_qdrant_errors_total')]];
+      $('metricsPanel').innerHTML=rows.map(([n,v])=>`<div class="stat"><span>${esc(n)}</span><b>${esc(v??'—')}</b></div>`).join('');
     }
-  } catch (e) {
-    console.error('event error:', e.message);
+  }catch(e){
+    $('sysSub').innerHTML='<span class="dot derr"></span>Service unreachable';
+    $('sysPanel').innerHTML=emptyState(friendly(e));
   }
 }
-
-async function getRecommendations() {
-  const uid = document.getElementById('user-input').value.trim();
-  const btn = event.target;
-  if (!uid) return;
-  btn.disabled = true;
-  document.getElementById('rec-results').innerHTML = '<div class="empty">Loading...</div>';
-
-  try {
-    const res = await fetch(`${API_BASE}/recommend/${encodeURIComponent(uid)}?k=20`);
-    if (!res.ok) {
-      const err = await res.json();
-      document.getElementById('rec-results').innerHTML = `<div class="empty">${err.detail || 'User not found'}</div>`;
-      return;
-    }
-    const data = await res.json();
-    document.getElementById('rec-latency').textContent = `Latency: ${data.latency_ms}ms · Model: ${data.model}`;
-    renderResults(data.items, 'rec-results', true);
-  } catch (e) {
-    document.getElementById('rec-results').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function sendChat() {
-  const message = document.getElementById('chat-input').value.trim();
-  const uid = document.getElementById('chat-user').value.trim();
-  const btn = event.target;
-  if (!message) return;
-  btn.disabled = true;
-  document.getElementById('chat-results').innerHTML = '<div class="empty">Thinking...</div>';
-  try {
-    const res = await fetch(`${API_BASE}/chat/recommend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: uid, message, top_k: 10 })
-    });
-    if (!res.ok) throw new Error((await res.json()).detail || 'chat failed');
-    const data = await res.json();
-    document.getElementById('chat-latency').textContent =
-      `Latency: ${data.latency_ms}ms · LLM mode: ${data.llm_mode} · prompt v${data.prompt_version}`;
-    if (!data.items || data.items.length === 0) {
-      document.getElementById('chat-results').innerHTML = '<div class="empty">No items found</div>';
-      return;
-    }
-    document.getElementById('chat-results').innerHTML = `
-      <div class="item-row" style="border-bottom:1px solid var(--border); padding:0.7rem 0; color:var(--text-muted); font-size:0.9rem;">
-        I found these items for you:
-      </div>` + data.items.map(i => `
-      <div class="item-row clickable" onclick="sendEvent('${i.item_id}', this)">
-        <div class="item-meta">
-          <span class="item-title">${escapeHtml(i.title || i.item_id)}</span>
-          <span class="item-category">${escapeHtml(i.category || 'Unknown')}</span>
-          <span class="event-tag"></span>
-        </div>
-        <span class="item-score">${i.score.toFixed(2)}</span>
-      </div>
-    `).join('');
-  } catch (e) {
-    document.getElementById('chat-results').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function loadMonitoring() {
-  const box = document.getElementById('monitor-content');
-  box.innerHTML = '<div class="empty">Loading...</div>';
-  try {
-    const [healthRes, metricsRes] = await Promise.all([
-      fetch(`${API_BASE}/health`),
-      fetch(`${API_BASE}/metrics`)
-    ]);
-    const health = await healthRes.json();
-    const raw = await metricsRes.text();
-    const get = (name, label) => {
-      const re = new RegExp(`^${name}\\{.*${label ? label + '=' : ''}.*\\} ([0-9.e+]+)`, 'm');
-      const m = raw.match(re);
-      return m ? m[1] : '-';
-    };
-    const events = [...raw.matchAll(/^recsys_events_total\{(.+?)\} ([\d.]+)/gm)]
-      .map(m => ({ label: m[1].match(/event_type="(\w+)"/)?.[1] || '?', count: m[2] }))
-      .filter(e => e.count !== '0');
-    box.innerHTML = `
-      <div class="grid2">
-        <div>
-          <div class="stat"><b>Status:</b> ${health.status} · <b>Model:</b> ${health.model_version}</div>
-          <div class="stat"><b>Device:</b> ${health.device} · <b>Qdrant:</b> ${health.qdrant_available ? 'online' : 'offline'}</div>
-          <div class="stat"><b>Users:</b> ${health.users} · <b>Items:</b> ${health.items}</div>
-        </div>
-        <div>
-          <div class="stat"><b>HTTP requests:</b> ${get('recsys_http_requests_total')}</div>
-          <div class="stat"><b>Rec requests:</b> ${get('recsys_rec_requests_total')}</div>
-          <div class="stat"><b>Events:</b> ${events.map(e => `${e.label}=${e.count}`).join(', ') || 'none'}</div>
-        </div>
-      </div>
-      <div class="stat mono" style="max-height:180px; overflow-y:auto; white-space:pre-wrap;">${escapeHtml(raw.split('\n').slice(0, 20).join('\n'))}</div>`;
-  } catch (e) {
-    box.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
-  }
-}
-
-function renderResults(items, containerId, clickable) {
-  const container = document.getElementById(containerId);
-  if (!items || items.length === 0) {
-    container.innerHTML = '<div class="empty">No results found</div>';
-    return;
-  }
-  container.innerHTML = items.map(i => `
-    <div class="item-row${clickable ? ' clickable' : ''}" ${clickable ? `onclick="sendEvent('${i.item_id}', this)"` : ''}>
-      <div class="item-meta">
-        <span class="item-title">${escapeHtml(i.title || i.item_id)}</span>
-        <span class="item-category">${escapeHtml(i.category || 'Unknown')}</span>
-        <span class="event-tag"></span>
-      </div>
-      <span class="item-score">${i.score.toFixed(2)}</span>
-    </div>
-  `).join('');
-}
-
-function renderTypeahead(items) {
-  const box = document.getElementById('typeahead');
-  if (!items || items.length === 0) {
-    box.classList.remove('show');
-    return;
-  }
-  box.innerHTML = items.map(i => `
-    <div class="item" onclick="selectItem(this)">
-      ${escapeHtml(i.title || i.item_id)}
-      <span class="badge">${escapeHtml(i.category || '')}</span>
-    </div>
-  `).join('');
-  box.classList.add('show');
-}
-
-function selectItem(el) {
-  const title = el.firstChild.textContent.trim();
-  const input = document.getElementById('search-input');
-  input.value = title;
-  el.parentElement.classList.remove('show');
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// Debounce search
-let searchTimeout;
-document.getElementById('search-input').addEventListener('input', (e) => {
-  clearTimeout(searchTimeout);
-  const q = e.target.value.trim();
-  if (q.length < 2) {
-    document.getElementById('typeahead').classList.remove('show');
-    return;
-  }
-  searchTimeout = setTimeout(async () => {
-    const items = await searchItems(q);
-    document.getElementById('search-latency').textContent = '';
-    renderTypeahead(items.slice(0, 8));
-  }, 250);
-});
-
-// Click away to close typeahead
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.search-container')) {
-    document.getElementById('typeahead').classList.remove('show');
-  }
-});
+// ── Navigation ──
+const VIEWS=['home','search','recs','ai','system'];
+function go(v){VIEWS.forEach(x=>$('v-'+x).classList.toggle('active',x===v));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.go===v));
+  window.scrollTo({top:0});if(v==='system')loadSystem();}
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+// ── Init ──
+['Toy Story','Star Wars','Batman','Sci-fi','Comedy'].forEach(s=>{
+  const c=document.createElement('button');c.type='button';c.className='chip';c.textContent=s;
+  c.addEventListener('click',()=>{$('heroQ').value=s;go('home');doSearch(s,$('heroResults'),null);});
+  $('heroChips').appendChild(c);});
+$('heroForm').addEventListener('submit',e=>{e.preventDefault();doSearch($('heroQ').value,$('heroResults'),null);});
+$('searchForm').addEventListener('submit',e=>{e.preventDefault();doSearch($('searchQ').value,$('searchResults'),$('searchHint'));});
+$('recBtn').addEventListener('click',loadRecs);
+$('userId').addEventListener('keydown',e=>{if(e.key==='Enter')loadRecs();});
+$('chatForm').addEventListener('submit',e=>{e.preventDefault();const v=$('chatInput').value.trim();if(v)sendChat(v);});
 </script>
 </body>
 </html>
+
