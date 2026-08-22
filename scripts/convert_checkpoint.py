@@ -38,8 +38,8 @@ def convert(checkpoint_path: str = "outputs/two_tower.pt", out_dir: str = "artif
     assert len(user_id_map) == user_emb.shape[0], "user map/emb mismatch"
     assert len(item_id_map) == item_emb.shape[0], "item map/emb mismatch"
 
-    user_ids = np.array(sorted(user_id_map, key=user_id_map.get), dtype=np.str_)
-    item_ids = np.array(sorted(item_id_map, key=item_id_map.get), dtype=np.str_)
+    user_ids = np.array(sorted(user_id_map, key=lambda k: user_id_map[k]), dtype=np.str_)
+    item_ids = np.array(sorted(item_id_map, key=lambda k: item_id_map[k]), dtype=np.str_)
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

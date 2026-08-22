@@ -78,7 +78,7 @@ def _make_consumer_kt_real(bootstrap_servers: str, topic: str) -> KafkaConsumer:
 
 def _make_consumer_kt_dummy(_bootstrap: str, _topic: str) -> _DummyKafkaConsumer:  # noqa: ANN001
     """Dummy implementation used when kafka-python is not installed."""
-    return _DummyKafkaConsumer()
+    return _DummyKafkaConsumer(_topic)
 
 
 # Select the implementation at module load time.

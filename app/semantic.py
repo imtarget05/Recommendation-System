@@ -64,8 +64,9 @@ class OnnxEncoder:
         feeds = {k: v for k, v in feeds.items()
                  if k in {inp.name for inp in self.session.get_inputs()}}
         out = self.session.run(None, feeds)[0]  # (B, T, H) last_hidden_state
+        hidden = np.asarray(out, dtype=np.float32)
         mask = attention[:, :, None].astype(np.float32)
-        summed = (out * mask).sum(axis=1)
+        summed = (hidden * mask).sum(axis=1)
         counts = np.clip(mask.sum(axis=1), 1e-9, None)
         emb = summed / counts
         norms = np.linalg.norm(emb, axis=1, keepdims=True)
