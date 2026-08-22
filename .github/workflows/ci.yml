@@ -66,33 +66,7 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
           set -euo pipefail
-          SHA="${{ github.sha }}"
-          echo "Waiting for deploy of commit ${SHA:0:7} to be live..."
-          for i in $(seq 1 60); do
-            RESP=$(curl -s -m 15 \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=5" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}")
-            STATUS=$(echo "$RESP" | python3 -c "
-          import json,sys
-          deploys = json.load(sys.stdin)
-          for d in deploys:
-              d = d['deploy']
-              if d.get('commit', {}).get('id','').startswith('${SHA:0:7}'):
-                  print(d['status']['name']); break
-          else:
-                  print('not_found')
-          " || echo "parse_error")
-            echo "[$i] status=$STATUS"
-            case "$STATUS" in
-              live) echo "Deployment LIVE"; exit 0 ;;
-              build_failed|update_failed|canceled|pre_deploy_failed|deactivated)
-                echo "Deployment FAILED: $STATUS"; exit 1 ;;
-              not_found)
-                echo "Deploy for this commit not registered yet; Render may auto-deploy shortly" ;;
-            esac
-            sleep 15
-          done
-          echo "TIMEOUT waiting for deployment"; exit 1
+          python3 scripts/wait_render_deploy.py "$RENDER_SERVICE_ID" "${{ github.sha }}" 900
 
       - name: Production smoke test (through Cloudflare Worker)
         run: |
