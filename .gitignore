@@ -32,5 +32,8 @@ models/**/*.parquet
 models/**/*.npz
 
 # Docker / infra
-*.log.rel/
+*.log
+.rel/
+.ingest.log
+.train.log
 artifacts/
