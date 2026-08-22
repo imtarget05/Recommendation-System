@@ -68,6 +68,38 @@ HTTP_LATENCY = Histogram(
 )
 REC_REQUESTS = Counter("recsys_rec_requests_total", "Recommendation requests", ["endpoint"])
 EVENTS = Counter("recsys_events_total", "User interaction events", ["event_type"])
+SEMANTIC_SEARCH_TOTAL = Counter(
+    "recsys_semantic_search_total", "Searches served semantically via Qdrant"
+)
+KEYWORD_FALLBACK_TOTAL = Counter(
+    "recsys_keyword_fallback_total", "Searches that fell back to keyword matching"
+)
+ONNX_INFERENCE_SECONDS = Histogram(
+    "recsys_onnx_inference_seconds", "ONNX encoder inference latency",
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+QDRANT_REQUESTS = Counter("recsys_qdrant_requests_total", "Qdrant queries issued")
+QDRANT_ERRORS = Counter(
+    "recsys_qdrant_errors_total", "Qdrant query failures", ["error_type"]
+)
+QDRANT_LATENCY = Histogram(
+    "recsys_qdrant_latency_seconds", "Qdrant query latency",
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+)
+
+_ERROR_TYPES = ("timeout", "connection", "unavailable", "other")
+
+
+def _classify_qdrant_error(exc: Exception) -> str:
+    """Map an exception to a finite error_type enum (no free-form labels)."""
+    s = f"{type(exc).__name__}: {exc}".lower()
+    if "timeout" in s or "timed out" in s:
+        return "timeout"
+    if "connect" in s or "network" in s or "dns" in s:
+        return "connection"
+    if "401" in s or "403" in s or "unauthorized" in s or "forbidden" in s:
+        return "unavailable"
+    return "other"
 
 
 class RecItem(BaseModel):
@@ -647,14 +679,19 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
     items: list[RecItem] = []
     source = "keyword"
     if state.qdrant_available and state.qdrant_client is not None:
+        QDRANT_REQUESTS.inc()
         try:
             from training.embeddings import query_qdrant
 
             embedder = _get_embedder()
+            enc_t0 = time.time()
             vector = embedder.encode([q], convert_to_numpy=True)[0]
+            ONNX_INFERENCE_SECONDS.observe(time.time() - enc_t0)
+            qd_t0 = time.time()
             hits = query_qdrant(
                 state.qdrant_client, state.qdrant_collection, vector, limit=20
             )
+            QDRANT_LATENCY.observe(time.time() - qd_t0)
             for hit in hits:
                 iid = str(hit.payload.get("item_id", "")) if hit.payload else ""
                 if not iid or iid not in state.item_id_map:
@@ -669,7 +706,8 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
                 ))
             source = "semantic"
         except Exception as e:  # noqa: BLE001
-            print(f"[search] semantic failed ({e}); keyword fallback")
+            QDRANT_ERRORS.labels(error_type=_classify_qdrant_error(e)).inc()
+            print(f"[search] semantic failed ({type(e).__name__}); keyword fallback")
 
     if not items:
         q_lower = q.lower()
@@ -688,6 +726,11 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
         query=q, items=items, latency_ms=round((time.time() - t0) * 1000, 2),
         source=source,
     )
+    # One primary outcome per request, derived from the served source.
+    if source == "semantic":
+        SEMANTIC_SEARCH_TOTAL.inc()
+    else:
+        KEYWORD_FALLBACK_TOTAL.inc()
     return resp
 
 
