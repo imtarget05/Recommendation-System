@@ -18,7 +18,6 @@ import json
 import statistics
 import time
 from pathlib import Path
-from typing import Any
 
 import httpx
 
@@ -34,7 +33,9 @@ def pct(values: list[float], q: float) -> float:
     return s[idx]
 
 
-async def hit(client: httpx.AsyncClient, base: str, ep: str) -> tuple[bool, float, int, dict | None, str | None]:
+async def hit(
+    client: httpx.AsyncClient, base: str, ep: str
+) -> tuple[bool, float, int, dict | None, str | None]:
     """Returns (ok, latency_ms, status, body, error_or_contract_violation)."""
     url = f"{base}/api/search?q={QUERY}"
     if ep == "recommend":
@@ -44,7 +45,7 @@ async def hit(client: httpx.AsyncClient, base: str, ep: str) -> tuple[bool, floa
     t0 = time.perf_counter()
     try:
         r = await asyncio.wait_for(client.get(url), timeout=25)
-    except (asyncio.TimeoutError, httpx.HTTPError) as e:
+    except (TimeoutError, httpx.HTTPError) as e:
         return False, (time.perf_counter() - t0) * 1000, 0, None, f"transport:{type(e).__name__}"
     dt = (time.perf_counter() - t0) * 1000
     body: dict | None = None
@@ -73,7 +74,11 @@ async def run_level(base: str, ep: str, concurrency: int, total: int, timeout: i
         async with sem:
             return await hit(client, base, ep)
 
-    async with httpx.AsyncClient(timeout=timeout, limits=httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)) as client:
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        limits=httpx.Limits(max_connections=concurrency,
+                            max_keepalive_connections=concurrency),
+    ) as client:
         t_start = time.perf_counter()
         tasks = [asyncio.create_task(one()) for _ in range(total)]
         # mixed: interleave search + recommend
@@ -113,7 +118,9 @@ async def run_level(base: str, ep: str, concurrency: int, total: int, timeout: i
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", required=True)
-    ap.add_argument("--endpoint", choices=["health", "recommend", "search", "mixed"], default="mixed")
+    ap.add_argument("--endpoint",
+                    choices=["health", "recommend", "search", "mixed"],
+                    default="mixed")
     ap.add_argument("--concurrency", type=int, default=10)
     ap.add_argument("--requests", type=int, default=40)
     ap.add_argument("--timeout", type=int, default=30)

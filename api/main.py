@@ -38,6 +38,8 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from pydantic import BaseModel, Field
 
 from app.numpy_retriever import NumpyRetriever, load_retriever
+from app.query_norm import normalize_query, strip_accents
+from app.rerank import content_tokens, score_candidate
 from llm.service import LLMService
 from training.common import build_weighted_counts
 
@@ -671,11 +673,20 @@ async def popular(k: int = Query(default=20, ge=1, le=100)) -> PopularResponse:
 
 @app.get("/search", response_model=SearchResponse)
 async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchResponse:
-    """Item search. Semantic (Qdrant) when available, else keyword fallback (Section 30)."""
+    """Item search. Semantic (Qdrant) when available, else keyword fallback (Section 30).
+
+    Query-time enrichment (no model / index change):
+      1. Vietnamese movie queries are mapped to English equivalents before
+         embedding (app.query_norm) — the response still echoes the ORIGINAL q.
+      2. Semantic top-N candidates are re-ranked with capped metadata bonuses
+         (category / title / tags / description — app.rerank); the semantic
+         score stays dominant and `source` remains "semantic".
+    """
     t0 = time.time()
     if state.items_df is None:
         raise HTTPException(status_code=503, detail="items catalog not loaded")
 
+    norm = normalize_query(q)
     items: list[RecItem] = []
     source = "keyword"
     if state.qdrant_available and state.qdrant_client is not None:
@@ -685,11 +696,11 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
 
             embedder = _get_embedder()
             enc_t0 = time.time()
-            vector = embedder.encode([q], convert_to_numpy=True)[0]
+            vector = embedder.encode([norm.normalized], convert_to_numpy=True)[0]
             ONNX_INFERENCE_SECONDS.observe(time.time() - enc_t0)
             qd_t0 = time.time()
             hits = query_qdrant(
-                state.qdrant_client, state.qdrant_collection, vector, limit=20
+                state.qdrant_client, state.qdrant_collection, vector, limit=50
             )
             QDRANT_LATENCY.observe(time.time() - qd_t0)
             for hit in hits:
@@ -709,13 +720,64 @@ async def search(q: str = Query(..., min_length=2, max_length=100)) -> SearchRes
             QDRANT_ERRORS.labels(error_type=_classify_qdrant_error(e)).inc()
             print(f"[search] semantic failed ({type(e).__name__}); keyword fallback")
 
-    if not items:
-        q_lower = q.lower()
-        mask = (
-            cast(pd.Series, state.items_df["title"]).str.lower().str.contains(q_lower)
-            | cast(pd.Series, state.items_df["tags"]).str.lower().str.contains(q_lower)
+    query_tokens = content_tokens(q)
+    if items:
+        # Metadata-aware re-rank over the semantic candidates.
+        scored: list[tuple[float, RecItem]] = []
+        for it in items:
+            row = state.items_df.loc[state.items_df["item_id"] == it.item_id]
+            tags = str(row.iloc[0].get("tags", "")) if len(row) else ""
+            desc = str(row.iloc[0].get("text_description", "")) if len(row) else ""
+            s = score_candidate(
+                semantic=it.score, title=it.title, category=it.category,
+                tags=tags, description=desc,
+                query_tokens=query_tokens,
+                detected_categories=norm.categories,
+            )
+            scored.append((s.final, it))
+        scored.sort(key=lambda p: p[0], reverse=True)
+        items = [RecItem(
+            item_id=it.item_id, title=it.title, category=it.category,
+            score=round(min(1.0, sc), 4),
+        ) for sc, it in scored[:20]]
+    elif source == "keyword":
+        # Keyword fallback matches on BOTH the raw key and the normalized
+        # English tokens, so Vietnamese queries still find genre matches.
+        norm_tokens = content_tokens(norm.normalized)
+        title_l = cast(pd.Series, state.items_df["title"]).map(
+            lambda t: strip_accents(str(t)).lower())
+        tags_l = cast(pd.Series, state.items_df["tags"]).map(
+            lambda t: strip_accents(str(t)).lower())
+        desc_l = (
+            cast(pd.Series, state.items_df["text_description"]).map(
+                lambda t: strip_accents(str(t)).lower())
+            if "text_description" in state.items_df.columns
+            else pd.Series("", index=state.items_df.index)
         )
-        results = state.items_df.loc[mask].head(20)
+        q_key = strip_accents(q).lower()
+        phrase_mask = (
+            title_l.str.contains(q_key, regex=False)
+            | tags_l.str.contains(q_key, regex=False)
+            | desc_l.str.contains(q_key, regex=False)
+        )
+        cat_l = cast(pd.Series, state.items_df["category"]).astype(str).map(
+            lambda c: strip_accents(c).lower())
+        token_mask = pd.Series(False, index=state.items_df.index)
+        for tok in norm_tokens:
+            token_mask |= (
+                title_l.str.contains(tok, regex=False)
+                | tags_l.str.contains(tok, regex=False)
+                | cat_l.str.contains(tok, regex=False)
+                | desc_l.str.contains(tok, regex=False)
+            )
+        mask = phrase_mask | token_mask
+        results = state.items_df.loc[mask].copy()
+        # Keyword path ordering: explicit category signal first, then title hits.
+        cat_rank = results["category"].map(
+            lambda c: next(
+                (i for i, cat in enumerate(norm.categories)
+                 if str(c).strip().lower() == cat.lower()), 9))
+        results = results.assign(_cr=cat_rank).sort_values("_cr").head(20)
         for _, r in results.iterrows():
             items.append(RecItem(
                 item_id=str(r["item_id"]), title=str(r["title"]),

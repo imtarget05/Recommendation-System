@@ -109,9 +109,9 @@ def cmd_execute(client: httpx.Client, short_sha: str, skip_smoke: bool) -> None:
         print(f"Render rejected commit-pinned deploy ({resp.status_code}): {body}")
         print()
         print("FALLBACK (forward-fix):")
-        print(f"  git revert -m 1 HEAD          # or: git revert <bad-commit>")
-        print(f"  git push origin main          # Render auto-deploys the revert")
-        print(f"  python3 scripts/wait_render_deploy.py <revert-sha>")
+        print("  git revert -m 1 HEAD          # or: git revert <bad-commit>")
+        print("  git push origin main          # Render auto-deploys the revert")
+        print("  python3 scripts/wait_render_deploy.py <revert-sha>")
         sys.exit(1)
 
     deploy_id = resp.json()["id"]
