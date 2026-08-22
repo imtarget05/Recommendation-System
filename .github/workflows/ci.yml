@@ -71,6 +71,7 @@ jobs:
       - name: Production smoke test (through Cloudflare Worker)
         run: |
           set -euo pipefail
+          pip install httpx
           python3 scripts/smoke_test.py "$SMOKE_BASE_URL" | tee smoke-test.log
           # pipefail guarantees non-zero propagates even through tee.
 
