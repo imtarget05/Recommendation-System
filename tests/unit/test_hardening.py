@@ -123,7 +123,10 @@ def test_nonfinite_embeddings_fail(monkeypatch) -> None:
         api_mod._validate_artifacts(model)
 
 
-def test_matching_artifacts_pass(monkeypatch) -> None:
+def test_matching_artifacts_pass(monkeypatch, tmp_path) -> None:
+    # Point MODEL_PATH at a location with no manifest so the (real) production
+    # manifest for the 453-user release is not compared against this 10-user toy.
+    monkeypatch.setattr(api_mod, "MODEL_PATH", str(tmp_path / "embeddings.npz"))
     model = _make_retriever(n_users=10, n_items=20)
     monkeypatch.setattr(api_mod, "state", _state_with(model))
     api_mod._validate_artifacts(model)  # must not raise

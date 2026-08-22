@@ -20,6 +20,7 @@ files are absent, they are downloaded from MODEL_URL / DATA_BASE_URL at startup.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from collections import deque
@@ -46,6 +47,7 @@ MODEL_URL = os.environ.get("EMBEDDINGS_URL", "")  # npz artifact (converted from
 DATA_BASE_URL = os.environ.get("DATA_BASE_URL", "")
 SEMANTIC_ASSETS_URL = os.environ.get("SEMANTIC_ASSETS_URL", "")  # hosts model.onnx + tokenizer.json
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "two-tower-v1")
+MANIFEST_URL = os.environ.get("MANIFEST_URL", "")  # versioned artifact manifest (P2)
 QDRANT_URL = os.environ.get("QDRANT_URL", "https://e891f845-c76f-4e54-bf4f-5bc649e459b5.us-west-1-0.aws.cloud.qdrant.io")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "batch1")  # JWT sub claim 'project' = batch1
 QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "items")
@@ -204,6 +206,94 @@ def _validate_artifacts(model: NumpyRetriever) -> None:
         _fail("user/item embedding dims equal", d_user, d_item)
     if not np.isfinite(model.user_emb).all() or not np.isfinite(model.item_emb).all():
         _fail("finite embedding values", "all finite", "NaN/Inf present")
+
+    _verify_manifest(model)
+
+
+def _sha256_file(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _ids_sha256(ids: list[str] | Any) -> str:
+    import hashlib
+
+    return hashlib.sha256("\n".join(sorted(map(str, ids))).encode()).hexdigest()
+
+
+def _verify_manifest(model: NumpyRetriever) -> None:
+    """Verify artifacts against the versioned manifest (P2).
+
+    Migration policy: if the manifest is present it is verified STRICTLY
+    (hash mismatch = fail-fast); if it has not been published yet we only warn,
+    so the current release keeps starting while the manifest rollout completes.
+    """
+    emb_path = Path(MODEL_PATH)
+    manifest_path = emb_path.parent / "manifest.json"
+    if not manifest_path.exists() and MANIFEST_URL:
+        _download(MANIFEST_URL, manifest_path)
+    if not manifest_path.exists():
+        print("[startup] WARNING: no artifact manifest found — skipping P2 hash checks")
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except Exception as e:
+        raise ArtifactIntegrityError(
+            f"Artifact integrity check failed: artifact=manifest expected=valid JSON actual={e}"
+        ) from None
+
+    def _fail(artifact: str, expected: object, actual: object) -> None:
+        raise ArtifactIntegrityError(
+            f"Artifact integrity check failed: artifact={artifact} "
+            f"expected={expected} actual={actual}"
+        )
+
+    schema = manifest.get("schema_version")
+    if schema != 1:
+        _fail("manifest schema_version", 1, schema)
+    if int(manifest.get("user_count", -1)) != int(model.user_emb.shape[0]):
+        _fail(
+            "manifest user_count vs user_emb rows",
+            model.user_emb.shape[0],
+            manifest.get("user_count"),
+        )
+    if int(manifest.get("item_count", -1)) != int(model.item_emb.shape[0]):
+        _fail(
+            "manifest item_count vs item_emb rows",
+            model.item_emb.shape[0],
+            manifest.get("item_count"),
+        )
+
+    ids_hash_user = manifest.get("user_ids_sha256")
+    if ids_hash_user and ids_hash_user != _ids_sha256(model.user_ids.tolist()):
+        _fail("user_ids_sha256", ids_hash_user[:12] + "…", "mismatch")
+    ids_hash_item = manifest.get("item_ids_sha256")
+    if ids_hash_item and ids_hash_item != _ids_sha256(model.item_ids.tolist()):
+        _fail("item_ids_sha256", ids_hash_item[:12] + "…", "mismatch")
+
+    arts = manifest.get("artifacts", {})
+    files = {
+        "embeddings.npz": emb_path,
+        "items.parquet": Path(DATA_DIR) / "items.parquet",
+        "interactions_train.parquet": Path(DATA_DIR) / "interactions_train.parquet",
+    }
+    for name, path in files.items():
+        meta = arts.get(name)
+        if not meta or not path.exists():
+            continue  # per-file entries are optional; missing file already failed earlier
+        digest = _sha256_file(path)
+        if digest != meta.get("sha256"):
+            _fail(
+                f"{name} sha256 (changed without manifest bump)",
+                str(meta.get("sha256", ""))[:12] + "…",
+                digest[:12] + "…",
+            )
+    print(f"[manifest] verified OK (release={manifest.get('release_version')})")
 
 
 class AppState:

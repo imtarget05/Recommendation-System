@@ -100,7 +100,7 @@ def load_retriever(npz_path: str = "artifacts/embeddings.npz") -> NumpyRetriever
             item_emb=z["item_emb"],
             user_ids=z["user_ids"],
             item_ids=z["item_ids"],
-            version=str(z["version"]),
+            version=str(z["version"]) if "version" in z.files else "two-tower-v1",
         )
 
 
