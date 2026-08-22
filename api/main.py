@@ -171,10 +171,14 @@ class EventResponse(BaseModel):
 
 class ChatRecommendRequest(BaseModel):
     """Conversational recommendation request (10A.3). A natural-language query AND an
-    explicit user id (the LLM is never asked to guess or fabricate a user)."""
+    explicit user id (the LLM is never asked to guess or fabricate a user).
+    ``fusion`` is an optional internal benchmark switch selecting a semantic-weight
+    preset (A=0.70 / B=0.50 / C=0.30); absent -> environment default weighted by
+    detected intent strength."""
     user_id: str
     message: str
     top_k: int = 10
+    fusion: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -814,53 +818,136 @@ def _run_engine(user_id: int, k: int) -> list[RecItem]:
     return _indices_to_items(list(ranked))
 
 
+# ── Hybrid conversational retrieval (message intent × Two-Tower personal) ──
+
+# Fusion weight presets (semantic weight) — benchmark candidates, not axioms.
+_FUSION_PRESETS: dict[str, float] = {"A": 0.70, "B": 0.50, "C": 0.30}
+CHAT_SEMANTIC_WEIGHT = float(os.environ.get("CHAT_SEMANTIC_WEIGHT", "0.70"))
+CHAT_SEMANTIC_WEIGHT_WEAK = float(os.environ.get("CHAT_SEMANTIC_WEIGHT_WEAK", "0.30"))
+
+
+def _minmax(items: list[RecItem]) -> dict[str, float]:
+    """Normalize a score list to [0, 1] (min-max within the candidate set)."""
+    if not items:
+        return {}
+    scores = [it.score for it in items]
+    lo, hi = min(scores), max(scores)
+    span = (hi - lo) or 1.0
+    return {it.item_id: (it.score - lo) / span for it in items}
+
+
+def _chat_semantic_candidates(message: str) -> tuple[list[RecItem], list[str], bool]:
+    """Message → normalize → MiniLM embed → Qdrant → metadata re-rank.
+
+    Same retrieval stack as /search (query_norm + rerank). Returns
+    (items, detected_categories, semantic_ok).
+    """
+    norm = normalize_query(message)
+    try:
+        if (state.qdrant_available and state.qdrant_client is not None
+                and state.items_df is not None):
+            from training.embeddings import query_qdrant
+
+            embedder = _get_embedder()
+            if embedder is not None:
+                vector = embedder.encode([norm.normalized], convert_to_numpy=True)[0]
+                hits = query_qdrant(
+                    state.qdrant_client, state.qdrant_collection, vector, limit=50
+                )
+                q_tokens = content_tokens(message)
+                scored: list[tuple[float, RecItem]] = []
+                for hit in hits:
+                    iid = str(hit.payload.get("item_id", "")) if hit.payload else ""
+                    if not iid or iid not in state.item_id_map:
+                        continue
+                    row = state.items_df.loc[state.items_df["item_id"] == iid]
+                    if len(row) == 0:
+                        continue
+                    r = row.iloc[0]
+                    s = score_candidate(
+                        semantic=float(hit.score), title=str(r["title"]),
+                        category=str(r["category"]), tags=str(r.get("tags", "")),
+                        description=str(r.get("text_description", "")),
+                        query_tokens=q_tokens, detected_categories=norm.categories,
+                    )
+                    sc = min(1.0, s.final)
+                    scored.append((sc, RecItem(
+                        item_id=iid, title=str(r["title"]),
+                        category=str(r["category"]), score=sc)))
+                scored.sort(key=lambda p: p[0], reverse=True)
+                return [it for _, it in scored[:20]], norm.categories, True
+    except Exception as e:  # noqa: BLE001
+        QDRANT_ERRORS.labels(error_type=_classify_qdrant_error(e)).inc()
+        print(f"[chat] semantic failed ({type(e).__name__})")
+    return [], norm.categories, False
+
+
 @app.post("/chat/recommend", response_model=ChatRecommendResponse)
 async def chat_recommend(req: ChatRecommendRequest) -> ChatRecommendResponse:
-    """LLOMM H5: LLM is only the understanding layer. Parse the request, run the engine,
-    optionally explain, then answer conversationally. LLM out/down => structured response
-    with llm_mode=fallback (LLM is never a SPOF, 10A.8)."""
+    """Hybrid conversational recommendation.
+
+    Pipeline (LLM is NOT in the retrieval hot path — deterministic movie-domain
+    normalization covers intent; no fashion schema, 10A.8 SPOF rule kept):
+
+        message → query_norm → MiniLM/Qdrant → metadata re-rank ┐
+                                                                  ├→ fusion → items
+        user_id → Two-Tower personalized candidates ─────────────┘
+
+    Known user: intent + personalization fused. Unknown user: semantic-only.
+    Generic message: personal signal dominates (weight switches automatically).
+    """
     t0 = time.time()
     uid = state.user_id_map.get(req.user_id)
 
-    # 1) LLM understands the request -> a StructuredFilter (10A.1). Optional layer.
-    filter_ = None
-    if state.llm is not None:
-        try:
-            filter_ = state.llm.extract_preference(req.message)
-        except Exception:  # noqa: BLE001
-            filter_ = None
+    # 1) Semantic candidates from the message (intent signal).
+    sem_items, cats, semantic_ok = _chat_semantic_candidates(req.message)
 
-    # 2) always run the engine (LLM only translates; it never picks items).
-    engine_items = _run_engine(uid, req.top_k) if uid is not None else []
+    # 2) Personalized candidates from the Two-Tower user tower.
+    personal_items = _run_engine(uid, max(req.top_k, 20)) if uid is not None else []
 
-    # 3) degrade: filter the catalog by what we understood (fallback to text match).
-    if not engine_items:
+    # 3) Score fusion with min-max normalization per signal.
+    sem_n = _minmax(sem_items)
+    per_n = _minmax(personal_items)
+    if req.fusion in _FUSION_PRESETS:
+        w_sem = _FUSION_PRESETS[req.fusion]
+    elif not cats and not content_tokens(req.message):
+        w_sem = CHAT_SEMANTIC_WEIGHT_WEAK      # generic message → personal dominant
+    else:
+        w_sem = CHAT_SEMANTIC_WEIGHT           # explicit intent → semantic dominant
+
+    universe: dict[str, dict[str, Any]] = {}
+    for it in sem_items:
+        universe.setdefault(
+            it.item_id, {"item": it, "sem": sem_n[it.item_id], "per": 0.0})
+    for it in personal_items:
+        entry = universe.setdefault(
+            it.item_id, {"item": it, "sem": 0.0, "per": per_n[it.item_id]})
+        entry["per"] = per_n[it.item_id]
+    fused = sorted(
+        universe.values(),
+        key=lambda e: w_sem * e["sem"] + (1.0 - w_sem) * e["per"],
+        reverse=True,
+    )[: req.top_k]
+
+    items = [
+        RecItem(
+            item_id=e["item"].item_id, title=e["item"].title,
+            category=e["item"].category,
+            score=round(w_sem * e["sem"] + (1.0 - w_sem) * e["per"], 4),
+        )
+        for e in fused
+    ]
+    if not items:
+        # Last-resort degrade (no Qdrant AND no model): catalog head — never empty-crash.
         df = state.items_df
         if df is not None and not df.empty:
-            mask = pd.Series(True, index=df.index)
-            if filter_ is not None and filter_.category:
-                mask &= df["category"].astype(str).str.lower().eq(filter_.category.lower())
-            if filter_ is not None and filter_.color:
-                mask &= df["tags"].astype(str).str.lower().str.contains(filter_.color.lower())
-            r = df.loc[mask].head(req.top_k)
             items = [
-                RecItem(
-                    item_id=str(r2["item_id"]), title=str(r2["title"]),
-                    category=str(r2["category"]), score=1.0,
-                )
-                for _, r2 in r.iterrows()
+                RecItem(item_id=str(r["item_id"]), title=str(r["title"]),
+                        category=str(r["category"]), score=1.0)
+                for _, r in df.head(req.top_k).iterrows()
             ]
-        else:
-            items = []
-    else:
-        items = engine_items
 
-    # 4) conversational + grounding. LLM never invents.
-    llm_mode = (
-        "ok"
-        if (filter_ is not None and state.llm is not None)
-        else "fallback"
-    )
+    llm_mode = "ok" if semantic_ok else "fallback"
     prompt_version = state.llm.prompt_version if state.llm is not None else 1
 
     return ChatRecommendResponse(
